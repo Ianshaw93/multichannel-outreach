@@ -1,0 +1,9 @@
+Hi {{first_name}},
+
+{{personalized_line}}
+
+I help {{company_name}} scale operations and streamline workflows. Would you be open to a quick chat about how we're helping similar businesses?
+
+Best,
+[Your Name]
+

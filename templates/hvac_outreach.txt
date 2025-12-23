@@ -1,0 +1,11 @@
+Hi {{first_name}},
+
+{{personalized_line}}
+
+I work with HVAC companies to solve technician scheduling and customer communication challenges. We've helped similar businesses reduce missed appointments by 40%.
+
+Worth a 15-minute call to see if it's a fit for {{company_name}}?
+
+Best,
+[Your Name]
+
