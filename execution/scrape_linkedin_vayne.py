@@ -22,13 +22,13 @@ if not VAYNE_API_KEY:
     sys.exit(1)
 
 # Vayne.io API configuration
-API_BASE = "https://api.vayne.io"
+API_BASE = "https://www.vayne.io/api"
 HEADERS = {
     "Authorization": f"Bearer {VAYNE_API_KEY}",
     "Content-Type": "application/json"
 }
 
-def create_scraping_order(sales_nav_url, max_results, export_format="advanced"):
+def create_scraping_order(sales_nav_url, max_results):
     """
     Create a new scraping order with Vayne.io API.
     Returns the order ID.
@@ -37,11 +37,18 @@ def create_scraping_order(sales_nav_url, max_results, export_format="advanced"):
     print(f"URL: {sales_nav_url}")
     print(f"Max results: {max_results}")
 
+    # Create unique order name with timestamp
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     payload = {
+        "name": f"Sales Nav Scrape {max_results} profiles {timestamp}",
         "url": sales_nav_url,
-        "maxResults": max_results,
-        "exportFormat": export_format,  # "simple" or "advanced"
-        "webhookUrl": None  # Optional: webhook for completion notification
+        "limit": max_results,
+        "email_enrichment": False,
+        "saved_search": False,
+        "secondary_webhook": "",
+        "export_format": "advanced"
     }
 
     try:
@@ -49,18 +56,18 @@ def create_scraping_order(sales_nav_url, max_results, export_format="advanced"):
         response.raise_for_status()
 
         order_data = response.json()
-        order_id = order_data.get("orderId") or order_data.get("id")
+        order_id = order_data.get("order", {}).get("id")
 
         if not order_id:
             print(f"Error: No order ID in response: {order_data}", file=sys.stderr)
             sys.exit(1)
 
-        print(f"✅ Order created successfully! Order ID: {order_id}")
+        print(f"Order created successfully! Order ID: {order_id}")
         return order_id
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Failed to create order: {e}", file=sys.stderr)
-        if hasattr(e.response, 'text'):
+        print(f"Failed to create order: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and hasattr(e.response, 'text'):
             print(f"Response: {e.response.text}", file=sys.stderr)
         sys.exit(1)
 
@@ -81,65 +88,98 @@ def poll_order_status(order_id):
             response.raise_for_status()
 
             order_data = response.json()
-            status = order_data.get("status", "unknown")
-            progress = order_data.get("progress", 0)
+            order = order_data.get("order", {})
+            status = order.get("scraping_status", "unknown")
+            scraped = order.get("scraped", 0)
+            total = order.get("total", 0)
 
             elapsed = int(time.time() - start_time)
             elapsed_str = f"{elapsed//60}m {elapsed%60}s" if elapsed >= 60 else f"{elapsed}s"
 
-            if status == "pending":
-                print(f"⏳ Status: Pending... ({elapsed_str} elapsed)")
-            elif status == "processing" or status == "running":
-                print(f"⏳ Status: Processing... Progress: {progress}% ({elapsed_str} elapsed)")
-            elif status == "completed" or status == "success":
-                print(f"✅ Order completed successfully! ({elapsed_str} total)")
-                results_count = order_data.get("resultsCount", "unknown")
-                print(f"📊 Results: {results_count} profiles extracted")
+            if status == "initialization":
+                print(f"Status: Initializing... ({elapsed_str} elapsed)")
+            elif status == "scraping":
+                progress = int((scraped / total * 100)) if total > 0 else 0
+                print(f"Status: Scraping... Progress: {progress}% ({scraped}/{total}) ({elapsed_str} elapsed)")
+            elif status == "finished":
+                print(f"Order completed successfully! ({elapsed_str} total)")
+                print(f"Results: {scraped} profiles extracted")
                 return True
             elif status == "failed" or status == "error":
-                error_msg = order_data.get("errorMessage", "Unknown error")
-                print(f"❌ Order failed: {error_msg}", file=sys.stderr)
+                print(f"Order failed: {status}", file=sys.stderr)
                 return False
             else:
-                print(f"Status: {status}, Progress: {progress}% ({elapsed_str} elapsed)")
+                print(f"Status: {status}, Scraped: {scraped}/{total} ({elapsed_str} elapsed)")
 
             time.sleep(poll_interval)
 
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error checking order status: {e}", file=sys.stderr)
+            print(f"Error checking order status: {e}", file=sys.stderr)
             time.sleep(poll_interval)
 
-def download_results(order_id):
+def download_order_results(order_id):
     """
-    Download the completed order results.
+    Download the completed order results from CSV file.
     Returns the profile data as a list of dictionaries.
     """
     print(f"\nDownloading results...")
 
     try:
-        response = requests.get(f"{API_BASE}/orders/{order_id}/download", headers=HEADERS)
+        # First get the order to find the file URL
+        response = requests.get(f"{API_BASE}/orders/{order_id}", headers=HEADERS)
         response.raise_for_status()
 
-        # Vayne.io returns JSON data
-        results = response.json()
+        order_data = response.json()
+        order = order_data.get("order", {})
+        exports = order.get("exports", {})
 
-        # Handle different response formats
-        if isinstance(results, dict):
-            # If wrapped in an object, extract the profiles array
-            profiles = results.get("profiles", results.get("data", results.get("results", [])))
-        elif isinstance(results, list):
-            # Direct array of profiles
-            profiles = results
-        else:
-            print(f"❌ Unexpected response format: {type(results)}", file=sys.stderr)
-            return None
+        # Try to get advanced export first, then simple
+        advanced_export = exports.get("advanced", {})
+        simple_export = exports.get("simple", {})
 
-        print(f"📥 Downloaded {len(profiles)} profiles")
+        file_url = None
+        if advanced_export.get("status") == "completed":
+            file_url = advanced_export.get("file_url")
+        elif simple_export.get("status") == "completed":
+            file_url = simple_export.get("file_url")
+
+        if not file_url:
+            print("No completed export found. Generating advanced export...", file=sys.stderr)
+            # Trigger export generation
+            export_response = requests.post(f"{API_BASE}/orders/{order_id}/export",
+                                          headers=HEADERS,
+                                          json={"export_format": "advanced"})
+            export_response.raise_for_status()
+
+            # Wait a moment and try again
+            time.sleep(5)
+            response = requests.get(f"{API_BASE}/orders/{order_id}", headers=HEADERS)
+            response.raise_for_status()
+            order_data = response.json()
+            file_url = order_data.get("order", {}).get("exports", {}).get("advanced", {}).get("file_url")
+
+            if not file_url:
+                print("Export still processing. Please wait and try again.", file=sys.stderr)
+                return None
+
+        # Download the CSV file
+        print(f"Downloading from: {file_url}")
+        csv_response = requests.get(file_url)
+        csv_response.raise_for_status()
+
+        # Parse CSV data
+        import csv
+        import io
+        csv_data = csv_response.text
+        reader = csv.DictReader(io.StringIO(csv_data))
+        profiles = list(reader)
+
+        print(f"Downloaded {len(profiles)} profiles")
         return profiles
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Failed to download results: {e}", file=sys.stderr)
-        if hasattr(e.response, 'text'):
+        print(f"Failed to download results: {e}", file=sys.stderr)
+        if hasattr(e, 'response') and hasattr(e.response, 'text'):
             print(f"Response: {e.response.text}", file=sys.stderr)
         return None
 
@@ -193,12 +233,12 @@ def save_results(profiles, output_path):
     with open(output_path, "w") as f:
         json.dump(profiles, f, indent=2)
 
-    print(f"✅ Results saved to {output_path}")
+    print(f"Results saved to {output_path}")
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape LinkedIn Sales Navigator using Vayne.io")
     parser.add_argument("--sales_nav_url", required=True, help="LinkedIn Sales Navigator search URL")
-    parser.add_argument("--max_results", type=int, default=100, help="Maximum number of profiles to scrape (max: 10,000)")
+    parser.add_argument("--max_results", type=int, default=20, help="Maximum number of profiles to scrape (max: 10,000)")
     parser.add_argument("--output", default=".tmp/vayne_profiles.json", help="Output file path")
     parser.add_argument("--export_format", choices=["simple", "advanced"], default="advanced",
                        help="Export format (default: advanced for maximum data)")
@@ -207,14 +247,14 @@ def main():
 
     # Validate max results
     if args.max_results > 10000:
-        print("⚠️  Warning: Max results limited to 10,000 per Vayne.io API limits")
+        print("Warning: Max results limited to 10,000 per Vayne.io API limits")
         args.max_results = 10000
 
-    print(f"🚀 Starting Vayne.io LinkedIn scrape...")
-    print(f"Target: {args.max_results} profiles from Sales Navigator")
+    print(f"Starting Vayne.io LinkedIn scrape...")
+    print(f"Target: {args.max_results} profiles from Sales Navigator (test run)")
 
     # Create scraping order
-    order_id = create_scraping_order(args.sales_nav_url, args.max_results, args.export_format)
+    order_id = create_scraping_order(args.sales_nav_url, args.max_results)
 
     # Poll until complete
     success = poll_order_status(order_id)
@@ -223,7 +263,7 @@ def main():
         sys.exit(1)
 
     # Download results
-    raw_profiles = download_results(order_id)
+    raw_profiles = download_order_results(order_id)
     if not raw_profiles:
         print("No results downloaded.")
         sys.exit(1)
@@ -232,12 +272,12 @@ def main():
     normalized_profiles = normalize_profiles(raw_profiles)
     save_results(normalized_profiles, args.output)
 
-    print(f"\n✅ Success! Extracted {len(normalized_profiles)} LinkedIn profiles.")
+    print(f"\nSuccess! Extracted {len(normalized_profiles)} LinkedIn profiles.")
     print(f"Output: {args.output}")
     print(f"\nProfiles are ready for downstream processing:")
-    print(f"  • Email enrichment")
-    print(f"  • Personalization")
-    print(f"  • Outreach campaigns")
+    print(f"  - Email enrichment")
+    print(f"  - Personalization")
+    print(f"  - Outreach campaigns")
 
 if __name__ == "__main__":
     main()

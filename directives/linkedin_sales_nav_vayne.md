@@ -5,7 +5,7 @@ Extract LinkedIn profile data from Sales Navigator search URLs using Vayne.io AP
 
 ## Inputs
 - **Sales Navigator URL**: The LinkedIn Sales Navigator search URL containing target filters
-- **Max Results**: Number of profiles to extract (default: 100, max: 10,000 per request)
+- **Max Results**: Number of profiles to extract (default: 20, max: 10,000 per request)
 - **Export Format**: Simple or Advanced (default: Advanced for maximum data)
 
 ## Tools/Scripts
@@ -18,7 +18,7 @@ Extract LinkedIn profile data from Sales Navigator search URLs using Vayne.io AP
 ```bash
 python3 execution/scrape_linkedin_vayne.py \
   --sales_nav_url "https://www.linkedin.com/sales/search/..." \
-  --max_results 1000 \
+  --max_results 20 \
   --output .tmp/vayne_profiles.json
 ```
 
