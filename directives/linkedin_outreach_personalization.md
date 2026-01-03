@@ -11,49 +11,86 @@ Send personalized LinkedIn connection requests and follow-up messages using HeyR
 - **Outreach Tool**: `heyreach` (recommended) or `phantombuster`
 
 ## Tools/Scripts
-- Script: `execution/generate_personalization.py` (AI personalization agent)
-- Script: `execution/linkedin_outreach_heyreach.py` (send via HeyReach)
+- Script: `execution/generate_personalization.py` (AI personalization agent - uses ChatGPT 5.2)
+- Script: `execution/add_leads_to_heyreach.py` (add leads to existing HeyReach campaign - RECOMMENDED)
+- Script: `execution/linkedin_outreach_heyreach.py` (legacy: creates new campaigns via API)
 - Script: `execution/linkedin_outreach_phantombuster.py` (alternative: send via PhantomBuster)
-- Dependencies: Anthropic API key, HeyReach or PhantomBuster API key
+- Dependencies: OpenAI API key (ChatGPT 5.2), HeyReach or PhantomBuster API key
+
+## HeyReach API Details
+
+**Authentication:**
+- Use `X-API-KEY` header (get API key from HeyReach → Integrations)
+- Rate limit: 300 requests/minute
+
+**Recommended Workflow:**
+1. Create campaign in HeyReach UI with message templates
+2. Use variables in templates: `{custom_message}`, `{personalized_line}`, `{icebreaker}`, etc.
+3. Add leads via API with `customUserFields` matching your variable names EXACTLY
+4. Track engagement via webhooks
+
+**Available Webhook Events:**
+- `connection_request_sent` - When connection request is sent
+- `connection_request_accepted` - When prospect accepts connection
+- `message_sent` - When message is sent
+- `message_reply_received` - When prospect replies (first reply)
+- `every_message_reply_received` - Every subsequent reply
+- `InMail_sent` / `InMail_reply_received` - InMail tracking
+- `status_tag_updated` - When lead status changes
+
+**Custom Field Requirements:**
+- Field names must EXACT MATCH between API payload and campaign variables
+- No spaces in variable names (use `_` or `-`)
+- Good examples: `{AI_Icebreaker_1}`, `{custom_message}`, `{value_prop}`
+- Bad examples: `{AI Icebreaker}`, `{custom message}` (spaces break it)
 
 ## Process
 
-### Step 1: Generate Personalized First Lines
+### Step 1: Generate Personalized 5-Line LinkedIn DMs
 
-Before sending any messages, use Claude to analyze each prospect's LinkedIn profile and generate a personalized opening line.
+Before sending any messages, use ChatGPT 5.2 to generate complete 5-line LinkedIn DMs following strict template rules.
 
 ```bash
 python3 execution/generate_personalization.py \
   --sheet_url "https://docs.google.com/spreadsheets/d/..." \
-  --output_column "personalized_line" \
-  --prompt_template "default_linkedin"
+  --output_column "linkedin_message" \
+  --prompt_template "linkedin_5_line"
 ```
 
 **What it does:**
-1. Reads leads from Google Sheet (columns: `full_name`, `title`, `company_name`, `linkedin_url`)
-2. For each lead, scrapes their LinkedIn profile (headline, about, recent posts)
-3. Uses Claude to generate a personalized first line based on:
-   - Their role/title
-   - Their company/industry
-   - Recent activity (posts, job changes)
-   - Mutual interests or pain points
-4. Writes `personalized_line` back to sheet
+1. Reads leads from Google Sheet (columns: `first_name`, `company_name`, `location`, `title`)
+2. Uses ChatGPT 5.2 to generate a complete 5-line DM:
+   - **Line 1:** Hey [FirstName]
+   - **Line 2:** [CompanyName] looks interesting
+   - **Line 3:** You guys do [service] right? Do that w [method]? Or what
+   - **Line 4:** Authority statement (2 lines using strict template - based on industry)
+   - **Line 5:** Location hook (Glasgow, Scotland reference)
+3. Writes complete `linkedin_message` back to sheet
 
-**Example outputs:**
-- "Saw you recently expanded your HVAC team in Austin - congrats on the growth!"
-- "Noticed you've been posting about technician retention challenges..."
-- "Fellow Austin business owner here - loved your thoughts on service quality"
+**Template Integrity:**
+- All templates are word-for-word (NO rephrasing allowed)
+- Only placeholders like [FirstName], [CompanyName], [service] can be changed
+- Authority statements follow exact 2-line format from knowledge base
+- Output is ready to send directly on LinkedIn (no section labels, no formatting)
 
-**Prompt templates available:**
-- `default_linkedin`: Generic B2B personalization
-- `service_business`: For contractors, agencies, local services
-- `saas_founder`: For SaaS/tech founders
-- `custom`: Provide your own prompt file
+**Example output:**
+```
+Hey John
+
+KTM Agency looks interesting
+
+You guys do paid ads right? Do that w Google + Meta? Or what
+
+Paid ads is a tough nut to crack
+Really comes down to precise targeting + personalisation to book clients at a high level
+
+See you're in Miami. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland
+```
 
 **Performance:**
 - ~100 leads in 3-4 minutes
-- Cost: ~$0.01-0.02 per personalization (Claude Haiku)
-- Quality: High (avoids generic AI slop by using real profile data)
+- Cost: ~$0.02-0.03 per message (ChatGPT 5.2)
+- Quality: High (follows strict template rules, avoids AI slop)
 
 ### Step 2: Prepare Message Template
 
@@ -82,6 +119,38 @@ Best,
 
 HeyReach is purpose-built for LinkedIn outreach and has better deliverability than PhantomBuster.
 
+**RECOMMENDED APPROACH: Create campaign in HeyReach UI first**
+
+1. **Set up campaign in HeyReach UI:**
+   - Create a new campaign with your desired settings
+   - Write message templates with variables: `{personalized_line}`, `{custom_message}`, etc.
+   - Configure sequence (connection request → follow-up after accepted → etc.)
+   - Note the List ID from the campaign
+
+2. **Generate personalized messages:**
+   ```bash
+   python3 execution/generate_personalization.py \
+     --sheet_url "https://docs.google.com/spreadsheets/d/..." \
+     --output_column "personalized_line" \
+     --prompt_template "default_linkedin"
+   ```
+
+3. **Add leads to campaign via API:**
+   ```bash
+   python3 execution/add_leads_to_heyreach.py \
+     --sheet_url "https://docs.google.com/spreadsheets/d/..." \
+     --list_id 12345 \
+     --custom_fields "personalized_line,custom_message" \
+     --update_sheet
+   ```
+
+**What it does:**
+1. Reads leads from Google Sheet
+2. Formats them with customUserFields for personalization
+3. Uploads to your HeyReach list via API
+4. Updates sheet with status
+
+**ALTERNATIVE: Create campaign via API (legacy script)**
 ```bash
 python3 execution/linkedin_outreach_heyreach.py \
   --sheet_url "https://docs.google.com/spreadsheets/d/..." \
@@ -90,12 +159,7 @@ python3 execution/linkedin_outreach_heyreach.py \
   --type connection_request \
   --daily_limit 50
 ```
-
-**What it does:**
-1. Creates a new campaign in HeyReach
-2. Uploads leads with personalized messages
-3. Sets sending schedule (e.g., 50 per day, random delays)
-4. Monitors campaign status and reports results
+Note: Creating campaigns via UI gives you more control over sequences and settings.
 
 **Features:**
 - Smart delays (randomized to avoid LinkedIn detection)
@@ -215,10 +279,44 @@ This is implemented in `directives/multichannel_outreach_campaign.md`
 
 ## Dependencies in .env
 ```
-ANTHROPIC_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
 HEYREACH_API_KEY=your_key_here
 PHANTOMBUSTER_API_KEY=your_key_here
 GOOGLE_APPLICATION_CREDENTIALS=credentials.json
+```
+
+## Webhook Setup (Optional but Recommended)
+
+To track replies and connections in real-time on your side:
+
+1. **Set up webhook endpoint** (can use Modal, Zapier, Make, or custom server)
+2. **Configure in HeyReach:**
+   - Go to Settings → Integrations → Webhooks
+   - Add webhook URL
+   - Select events to track: `connection_request_accepted`, `message_reply_received`
+3. **Handle webhook data:**
+   - Parse incoming JSON payload
+   - Update your Google Sheet or database with engagement status
+   - Trigger next steps in your outreach flow
+
+**Example webhook payload (connection accepted):**
+```json
+{
+  "event": "connection_request_accepted",
+  "lead": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "profileUrl": "https://linkedin.com/in/johndoe",
+    "customUserFields": [
+      {"name": "personalized_line", "value": "..."}
+    ]
+  },
+  "campaign": {
+    "id": 12345,
+    "name": "HVAC Owners Q1"
+  },
+  "timestamp": "2025-01-15T10:30:00Z"
+}
 ```
 
 ## Learnings
@@ -232,5 +330,16 @@ GOOGLE_APPLICATION_CREDENTIALS=credentials.json
 - A/B test message variations on small batches before scaling
 - Always monitor the first 50 sends closely - catch issues early
 - Response rate drops significantly after 300 characters (keep it short!)
+- **CRITICAL**: Custom field names must EXACTLY match between API and campaign templates
+- Creating campaigns in HeyReach UI gives better control than API campaign creation
+- Webhooks let you track engagement on your side while HeyReach handles sending
+- Use `customUserFields` array in API payload (not `custom_variables`)
+- HeyReach API rate limit: 300 requests/minute (plan batching accordingly)
+- Only ACTIVE campaigns can receive leads via API (not drafts)
+
+
+
+
+
 
 

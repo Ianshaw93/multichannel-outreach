@@ -1,0 +1,18 @@
+Hi {firstName},
+
+{personalized_line}
+
+I help companies like {companyName} streamline their outreach and book more qualified meetings through multi-channel orchestration.
+
+Would you be open to a quick chat about scaling your outbound?
+
+Best,
+[Your Name]
+
+---
+NOTES:
+- Variables must match EXACTLY what you send in customUserFields via API
+- Use {firstName}, {lastName}, {companyName}, {position} for default fields
+- Use {personalized_line}, {custom_message}, {icebreaker}, etc. for custom fields
+- Keep connection requests under 300 characters (LinkedIn limit)
+- This is just the connection request message - you can add follow-up sequences in HeyReach UI

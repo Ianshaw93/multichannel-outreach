@@ -322,3 +322,8 @@ For running **2000 leads/month** (typical mid-size campaign):
 **Remember**: This is a self-annealing system. When you encounter issues, fix the scripts and update the directives with learnings.
 
 
+
+We'd need to use the rest of their profile as well. 
+
+
+

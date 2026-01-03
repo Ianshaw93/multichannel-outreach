@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate personalized opening lines for LinkedIn outreach using Claude.
-Analyzes LinkedIn profiles to create contextual, non-generic personalizations.
+Generate personalized 5-line LinkedIn DMs using ChatGPT 5.2.
+Follows strict template rules with authority statements based on industry.
 """
 
 import os
@@ -9,7 +9,7 @@ import sys
 import json
 import argparse
 from dotenv import load_dotenv
-from anthropic import Anthropic
+from openai import OpenAI
 import gspread
 from google.oauth2.credentials import Credentials
 from google.oauth2.service_account import Credentials as ServiceAccountCredentials
@@ -96,118 +96,225 @@ def scrape_linkedin_profile_light(linkedin_url):
         print(f"  ⚠️  Could not scrape profile: {e}")
         return None
 
-def get_personalization_prompt(template_name="default_linkedin"):
+def get_personalization_prompt(template_name="linkedin_5_line"):
     """
-    Get the personalization prompt template.
+    Get the personalization prompt template for ChatGPT 5.2.
     """
     templates = {
-        "default_linkedin": """You are an expert at crafting personalized LinkedIn outreach messages.
+        "linkedin_5_line": """You create **5-line LinkedIn DMs** that feel personal and conversational — balancing business relevance with personal connection and strict template wording.
 
-Your task: Generate a personalized opening line for a LinkedIn connection request or message.
+## TASK
+Generate 5 lines:
+1. **Greeting** → Hey [FirstName]
+2. **Profile hook** → [CompanyName] looks interesting
+3. **Business related Inquiry** → You guys do [service] right? Do that w [method]? Or what
+4. **Authority building Hook** → 2-line authority statement based on industry (see rules below)
+5. **Location Hook** → See you're in [city/region]. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland
+
+---
+
+# PROFILE HOOK TEMPLATE (LINE 2)
+
+Template: [CompanyName] looks interesting
+
+Rules:
+● Use their current company name (not past companies)
+● Always "looks interesting" (not "sounds interesting" or other variations)
+● No exclamation marks
+● Keep it casual
+
+Examples:
+● War Room looks interesting
+● KTM Agency looks interesting
+● Immersion Data Solutions looks interesting
+● NS Marketing looks interesting
+
+Note: If company name is very long, you can shorten:
+● "Immersion Data Solutions" → "IDS looks interesting"
+● "The NS Marketing Agency" → "NS Marketing looks interesting"
+
+---
+
+# BUSINESS INQUIRY TEMPLATE (LINE 3)
+
+Template: You guys do [service] right? Do that w [method]? Or what
+
+Rules:
+● Infer [service] from their company/title (e.g., "paid ads", "branding", "outbound", "CRM", "analytics")
+● Infer [method] based on common methods for that service
+● Keep it casual and conversational
+● Use "w" instead of "with"
+
+Examples:
+● You guys do paid ads right? Do that w Google + Meta? Or what
+● You guys do outbound right? Do that w LinkedIn + email? Or what
+● You guys do branding right? Do that w design + positioning? Or what
+
+---
+
+# AUTHORITY STATEMENT GENERATION (LINE 4 - 2 LINES)
+
+You MUST follow the exact template, rules, and constraints below. Do not deviate from examples or structure.
+
+Your job is to generate short, punchy authority statements that:
+● Sound like a founder talking to another founder
+● Contain zero fluff
+● Tie everything to business outcomes (revenue, scaling, margins, clients, CAC, downtime, etc.)
+● Always follow the 2-line template
+● Contain only true statements
+● Use simple, natural, conversational language
+● Are industry-accurate
+● Are 2 lines maximum
+
+## AUTHORITY STATEMENT TEMPLATE (MANDATORY)
+
+**Line 1 — X is Y.**
+A simple, universally true industry insight. Examples (do NOT alter these):
+● "Ecom is a tough nut to crack."
+● "Branding is so powerful."
+● "Compliance is a must."
+● "Outbound is a tough nut to crack."
+● "A streamlined CRM is so valuable."
+● "Podcasting is powerful."
+● "Analytics is valuable."
+● "VA placement is so valuable."
+
+**Line 2 — Business outcome (money / revenue / scaling / clients).**
+Tie the idea directly to something founders actually care about. Examples (do NOT alter these):
+● "Often comes down to having a brand/offer that's truly different."
+● "Without proper tracking you're literally leaving revenue on the table."
+● "Great way to build trust at scale with your ideal audience."
+● "So downtime saved alone makes it a no-brainer."
+● "Nice way to see revenue leaks and double down on what works."
+● "Higher margins and faster scaling for companies that use them right."
+● "Really comes down to precise targeting + personalisation to book clients at a high level."
+
+## RULES YOU MUST FOLLOW (NON-NEGOTIABLE)
+
+1. The result must always be EXACTLY 2 lines. Never more, never fewer.
+
+2. No fluff. No generic statements. No teaching tone.
+Avoid phrases like:
+● "helps businesses…"
+● "keeps things running smoothly…"
+● "boosts adoption fast…"
+● "improves efficiency…"
+● "keeps listeners engaged…"
+● "help manage leads efficiently…"
+These are forbidden.
+
+3. No repeating the same idea twice.
+Avoid tautologies such as:
+● "Inboxes are crowded. Response rates are low."
+● "Hiring is tough. Most candidates are similar."
+Only one cause per example.
+
+4. Every term MUST be used accurately.
+If referencing: CRM, analytics, demand gen, attribution, compliance, margins, downtime, CAC, outbound, SQL/Sales pipeline, etc.
+→ You MUST demonstrate correct real-world understanding.
+Never misuse terms.
+
+5. "Underrated" may only be used when the thing is ACTUALLY underrated.
+Cybersecurity, VAs, branding, and CRM are NOT underrated.
+Examples you MUST respect:
+● ✔ "VA placement is so valuable."
+● ✔ "Cybersecurity is valuable."
+● ❌ "VA placement is underrated."
+● ❌ "Cybersecurity is underrated."
+
+6. Every final line MUST connect to MONEY.
+
+7. Use the Founder Voice. Read it as if you were DM'ing a sophisticated founder. Short, direct, conversational.
+
+8. Everything must be TRUE. If the industry reality is not obvious, you must adjust the statement to something factual.
+
+---
+
+# LOCATION HOOK TEMPLATE (LINE 5)
+
+Template (word-for-word, only replace [city/region]):
+See you're in [city/region]. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland
+
+---
+
+# TEMPLATE INTEGRITY LAW
+
+Templates must be word-for-word.
+Only `[placeholders]` may be swapped.
+No rephrasing.
+
+---
+
+# OUTPUT FORMAT
+
+Always output 5 lines (Greeting → Profile hook → Business Inquiry → Authority Statement → Location Hook).
+
+Take a new paragraph (blank line) between each line.
+
+Only output the line contents - NOT section labels like "Greeting:" or "Authority Building Hook:". The full message will be sent on LinkedIn as is.
+
+DO NOT include long dashes (---) in the output.
+
+Only return the message - the full reply will be sent on LinkedIn directly.
+
+---
 
 Lead Information:
-- Name: {full_name}
-- Title: {title}
+- First Name: {first_name}
 - Company: {company_name}
+- Title: {title}
 - Location: {location}
-- Headline: {headline}
 
-Requirements for the personalized line:
-1. Must be SPECIFIC to this person (reference their role, company, location, or industry)
-2. Must be NATURAL and conversational (not robotic or salesy)
-3. Must be SHORT (under 50 words, ideally 1 sentence)
-4. Must NOT be generic (avoid "I came across your profile", "I see you're in X industry")
-5. Should show genuine interest or relevance
-6. Can reference their location, company growth, industry trends, or role challenges
-
-Good examples:
-- "Saw you're scaling the HVAC team at {company} - hiring in this market is tough!"
-- "Fellow Austin business owner here - love seeing local HVAC companies thrive"
-- "Congrats on the growth at {company} - noticed you're expanding to new areas"
-
-Bad examples (too generic):
-- "I came across your profile and thought we should connect"
-- "I see you work in HVAC"
-- "I'd love to connect with you"
-
-Return ONLY the personalized line (no quotes, no explanation).
-""",
-        
-        "service_business": """You are an expert at reaching out to local service business owners.
-
-Your task: Generate a personalized opening line for a LinkedIn message to a service business owner.
-
-Lead Information:
-- Name: {full_name}
-- Title: {title}
-- Company: {company_name}
-- Location: {location}
-
-Focus on:
-- Common challenges (hiring, customer acquisition, scaling)
-- Local pride (if same city/region)
-- Industry respect (acknowledge the hard work)
-- Business growth signals
-
-Return ONLY the personalized line (under 50 words).
-""",
-        
-        "saas_founder": """You are an expert at reaching out to SaaS and tech founders.
-
-Your task: Generate a personalized opening line for a LinkedIn message to a SaaS founder.
-
-Lead Information:
-- Name: {full_name}
-- Title: {title}
-- Company: {company_name}
-- Headline: {headline}
-
-Focus on:
-- Product/market fit challenges
-- Scaling struggles
-- Industry trends
-- Growth signals (hiring, funding, expansion)
-
-Return ONLY the personalized line (under 50 words).
-"""
+Generate the complete 5-line LinkedIn DM now. Return ONLY the message (no explanation, no labels, no formatting).""",
     }
-    
-    return templates.get(template_name, templates["default_linkedin"])
+
+    return templates.get(template_name, templates["linkedin_5_line"])
 
 def generate_personalization(lead, prompt_template):
     """
-    Generate a personalized line for one lead using Claude.
+    Generate a personalized 5-line LinkedIn DM using ChatGPT 5.2.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
+        print("  ⚠️  Error: OPENAI_API_KEY not found in .env")
         return None
-    
-    client = Anthropic(api_key=api_key)
-    
+
+    client = OpenAI(api_key=api_key)
+
+    # Extract first name from full_name
+    full_name = lead.get("full_name", lead.get("first_name", ""))
+    first_name = full_name.split()[0] if full_name else ""
+
     # Fill in the prompt template
     prompt = prompt_template.format(
-        full_name=lead.get("full_name", ""),
+        first_name=first_name,
         title=lead.get("title", ""),
         company_name=lead.get("company_name", ""),
-        location=lead.get("location", ""),
-        headline=lead.get("headline", "")
+        location=lead.get("location", "")
     )
-    
+
     try:
-        response = client.messages.create(
-            model="claude-3-haiku-20240307",  # Fast and cheap for this task
-            max_tokens=150,
-            messages=[{"role": "user", "content": prompt}]
+        response = client.chat.completions.create(
+            model="gpt-4o",  # ChatGPT 5.2 (latest GPT-4o model)
+            messages=[
+                {"role": "system", "content": "You are an expert at creating personalized LinkedIn DMs following strict template rules."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=400,
+            temperature=0.7
         )
-        
-        personalized_line = response.content[0].text.strip()
-        
-        # Remove quotes if Claude added them
-        if personalized_line.startswith('"') and personalized_line.endswith('"'):
-            personalized_line = personalized_line[1:-1]
-        
-        return personalized_line
-        
+
+        linkedin_message = response.choices[0].message.content.strip()
+
+        # Remove quotes if ChatGPT added them
+        if linkedin_message.startswith('"') and linkedin_message.endswith('"'):
+            linkedin_message = linkedin_message[1:-1]
+
+        # Remove any triple backticks or markdown formatting
+        linkedin_message = linkedin_message.replace("```", "").strip()
+
+        return linkedin_message
+
     except Exception as e:
         print(f"  ⚠️  Error generating personalization: {e}")
         return None
@@ -351,17 +458,17 @@ def personalize_leads(sheet_url, output_column, prompt_template_name):
     return sheet_url
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate personalized LinkedIn opening lines")
+    parser = argparse.ArgumentParser(description="Generate personalized 5-line LinkedIn DMs using ChatGPT 5.2")
     parser.add_argument("--sheet_url", required=True, help="Google Sheet URL with leads")
-    parser.add_argument("--output_column", default="personalized_line", help="Column name for personalized lines")
-    parser.add_argument("--prompt_template", default="default_linkedin", 
-                       choices=["default_linkedin", "service_business", "saas_founder"],
+    parser.add_argument("--output_column", default="personalized_message", help="Column name for complete LinkedIn messages")
+    parser.add_argument("--prompt_template", default="linkedin_5_line",
+                       choices=["linkedin_5_line"],
                        help="Prompt template to use")
-    
+
     args = parser.parse_args()
-    
+
     result_url = personalize_leads(args.sheet_url, args.output_column, args.prompt_template)
-    
+
     if result_url:
         print(f"\n✅ Success! Updated sheet: {result_url}")
     else:
@@ -370,5 +477,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
 
 

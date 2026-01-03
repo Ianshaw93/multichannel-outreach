@@ -1,0 +1,124 @@
+{
+  "totalCount": 5,
+  "items": [
+    {
+      "id": 291127,
+      "name": "Smiths Agentic 1",
+      "creationTime": "2025-12-24T16:37:53.619063Z",
+      "linkedInUserListName": "Smiths Agentic List",
+      "linkedInUserListId": 464435,
+      "campaignAccountIds": [],
+      "status": "DRAFT",
+      "progressStats": {
+        "totalUsers": 0,
+        "totalUsersInProgress": 0,
+        "totalUsersPending": 0,
+        "totalUsersFinished": 0,
+        "totalUsersFailed": 0,
+        "totalUsersManuallyStopped": 0,
+        "totalUsersExcluded": 0
+      },
+      "excludeInOtherCampaigns": true,
+      "excludeHasOtherAccConversations": false,
+      "excludeContactedFromSenderInOtherCampaign": false,
+      "excludeListId": null,
+      "organizationUnitId": 85099
+    },
+    {
+      "id": 287684,
+      "name": "smiths solar",
+      "creationTime": "2025-12-17T21:58:34.56819Z",
+      "linkedInUserListName": "Smiths Solar owners",
+      "linkedInUserListId": 458301,
+      "campaignAccountIds": [
+        78135
+      ],
+      "status": "IN_PROGRESS",
+      "progressStats": {
+        "totalUsers": 968,
+        "totalUsersInProgress": 131,
+        "totalUsersPending": 773,
+        "totalUsersFinished": 53,
+        "totalUsersFailed": 11,
+        "totalUsersManuallyStopped": 0,
+        "totalUsersExcluded": 0
+      },
+      "excludeInOtherCampaigns": false,
+      "excludeHasOtherAccConversations": false,
+      "excludeContactedFromSenderInOtherCampaign": false,
+      "excludeListId": null,
+      "organizationUnitId": 85099
+    },
+    {
+      "id": 212655,
+      "name": "Smiths Email marketers",
+      "creationTime": "2025-09-15T08:45:30.002461Z",
+      "linkedInUserListName": "smiths email marketers",
+      "linkedInUserListId": 336823,
+      "campaignAccountIds": [
+        78135
+      ],
+      "status": "FINISHED",
+      "progressStats": {
+        "totalUsers": 1284,
+        "totalUsersInProgress": -8,
+        "totalUsersPending": 1249,
+        "totalUsersFinished": 2,
+        "totalUsersFailed": 41,
+        "totalUsersManuallyStopped": 0,
+        "totalUsersExcluded": 0
+      },
+      "excludeInOtherCampaigns": false,
+      "excludeHasOtherAccConversations": false,
+      "excludeContactedFromSenderInOtherCampaign": true,
+      "excludeListId": null,
+      "organizationUnitId": 85099
+    },
+    {
+      "id": 182845,
+      "name": "CamB Central US",
+      "creationTime": "2025-07-31T07:39:24.908267Z",
+      "linkedInUserListName": "Central US CamB Filtered",
+      "linkedInUserListId": 288230,
+      "campaignAccountIds": [],
+      "status": "PAUSED",
+      "progressStats": {
+        "totalUsers": 846,
+        "totalUsersInProgress": 59,
+        "totalUsersPending": 782,
+        "totalUsersFinished": 3,
+        "totalUsersFailed": 2,
+        "totalUsersManuallyStopped": 0,
+        "totalUsersExcluded": 0
+      },
+      "excludeInOtherCampaigns": false,
+      "excludeHasOtherAccConversations": false,
+      "excludeContactedFromSenderInOtherCampaign": true,
+      "excludeListId": null,
+      "organizationUnitId": 85099
+    },
+    {
+      "id": 138641,
+      "name": "Smiths AI",
+      "creationTime": "2025-05-14T14:44:14.487372Z",
+      "linkedInUserListName": "smiths AI agencies",
+      "linkedInUserListId": 221684,
+      "campaignAccountIds": [],
+      "status": "PAUSED",
+      "progressStats": {
+        "totalUsers": 2400,
+        "totalUsersInProgress": 128,
+        "totalUsersPending": 2245,
+        "totalUsersFinished": 21,
+        "totalUsersFailed": 6,
+        "totalUsersManuallyStopped": 0,
+        "totalUsersExcluded": 0
+      },
+      "excludeInOtherCampaigns": true,
+      "excludeHasOtherAccConversations": true,
+      "excludeContactedFromSenderInOtherCampaign": true,
+      "excludeListId": null,
+      "organizationUnitId": 85099
+    }
+  ]
+}

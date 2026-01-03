@@ -167,12 +167,23 @@ def download_order_results(order_id):
         csv_response = requests.get(file_url)
         csv_response.raise_for_status()
 
+        # Save raw CSV for debugging
+        raw_csv_path = ".tmp/vayne_raw_export.csv"
+        os.makedirs(".tmp", exist_ok=True)
+        with open(raw_csv_path, "w", encoding="utf-8") as f:
+            f.write(csv_response.text)
+        print(f"Raw CSV saved to: {raw_csv_path}")
+
         # Parse CSV data
         import csv
         import io
         csv_data = csv_response.text
         reader = csv.DictReader(io.StringIO(csv_data))
         profiles = list(reader)
+
+        # Print column names for debugging
+        if profiles:
+            print(f"CSV columns: {list(profiles[0].keys())}")
 
         print(f"Downloaded {len(profiles)} profiles")
         return profiles
@@ -186,25 +197,54 @@ def download_order_results(order_id):
 def normalize_profiles(raw_profiles):
     """
     Normalize Vayne.io profile data to consistent schema.
+    Captures ALL rich profile data for personalization.
     """
     normalized = []
 
     for profile in raw_profiles:
-        # Vayne.io provides comprehensive profile data
+        # Basic info
         normalized_profile = {
-            "full_name": profile.get("fullName") or profile.get("name", ""),
-            "first_name": profile.get("firstName", ""),
-            "last_name": profile.get("lastName", ""),
-            "title": profile.get("title") or profile.get("headline", ""),
-            "company_name": profile.get("companyName") or profile.get("company", ""),
-            "company_domain": profile.get("companyDomain") or profile.get("companyWebsite", ""),
-            "linkedin_url": profile.get("linkedinUrl") or profile.get("profileUrl", ""),
+            "first_name": profile.get("first name", ""),
+            "last_name": profile.get("last name", ""),
+            "full_name": f"{profile.get('first name', '')} {profile.get('last name', '')}".strip(),
+            "email": profile.get("email", ""),
+            "phone": profile.get("phone", ""),
+            "linkedin_url": profile.get("linkedin url", ""),
             "location": profile.get("location", ""),
             "headline": profile.get("headline", ""),
-            "industry": profile.get("industry", ""),
-            "connections": profile.get("connections", ""),
-            "company_size": profile.get("companySize", ""),
-            "company_industry": profile.get("companyIndustry", ""),
+            "connections": profile.get("number of connections", ""),
+
+            # RICH PROFILE DATA (the good stuff!)
+            "summary": profile.get("summary", ""),  # About section - KEY for personalization
+            "skills": profile.get("skills", ""),
+            "languages": profile.get("languages", ""),
+            "certifications": profile.get("certifications", ""),
+
+            # Current job
+            "job_title": profile.get("job title", ""),
+            "job_description": profile.get("job description", ""),
+            "job_started_on": profile.get("job started on", ""),
+            "company": profile.get("company", ""),
+            "company_linkedin_url": profile.get("corporate linkedin url", ""),
+            "company_website": profile.get("corporate website", ""),
+            "company_description": profile.get("linkedin description", ""),
+            "company_specialities": profile.get("linkedin specialities", ""),
+            "company_employees": profile.get("linkedin employees", ""),
+            "company_industry": profile.get("linkedin industry", ""),
+            "company_founded": profile.get("linkedin founded year", ""),
+            "company_location": profile.get("linkedin company location", ""),
+
+            # Previous jobs (for context on career trajectory)
+            "previous_job_title": profile.get("job title (2)", ""),
+            "previous_job_description": profile.get("job description (2)", ""),
+            "previous_company": profile.get("company (2)", ""),
+
+            # Education
+            "education_degree": profile.get("education degree (1)", ""),
+            "education_field": profile.get("education fields of study (1)", ""),
+            "education_school": profile.get("education school (1)", ""),
+
+            # Meta
             "scraped_at": datetime.now().isoformat(),
             "source": "linkedin_sales_navigator_vayne"
         }

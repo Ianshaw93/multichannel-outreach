@@ -5,7 +5,15 @@
       "Bash(python3:*)",
       "Bash(python:*)",
       "Bash(curl:*)",
-      "WebFetch(domain:www.vayne.io)"
+      "WebFetch(domain:www.vayne.io)",
+      "WebFetch(domain:documenter.getpostman.com)",
+      "WebFetch(domain:help.heyreach.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.clay.com)",
+      "WebFetch(domain:www.university.clay.com)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []

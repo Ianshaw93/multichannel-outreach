@@ -77,10 +77,12 @@ def load_message_template(template_path):
 def create_campaign(campaign_name, message_template, campaign_type, daily_limit):
     """
     Create a new HeyReach campaign.
+    NOTE: It's recommended to create campaigns in the HeyReach UI and use API to add leads.
     """
     headers = {
-        "Authorization": f"Bearer {HEYREACH_API_KEY}",
-        "Content-Type": "application/json"
+        "X-API-KEY": HEYREACH_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
     
     # HeyReach API endpoint for creating campaigns
@@ -123,24 +125,38 @@ def upload_leads_to_campaign(campaign_id, leads):
     Upload leads to HeyReach campaign.
     """
     headers = {
-        "Authorization": f"Bearer {HEYREACH_API_KEY}",
-        "Content-Type": "application/json"
+        "X-API-KEY": HEYREACH_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
-    
+
     url = f"{HEYREACH_API_BASE}/campaigns/{campaign_id}/leads"
-    
-    # Format leads for HeyReach
+
+    # Format leads for HeyReach with correct API structure
     formatted_leads = []
     for lead in leads:
+        # Build customUserFields array for personalization
+        custom_fields = []
+
+        # Add personalized_line if available
+        if lead.get("personalized_line"):
+            custom_fields.append({
+                "name": "personalized_line",
+                "value": lead.get("personalized_line", "")
+            })
+
+        # Add any other custom fields you want to include
+        # e.g., custom_message, icebreaker, value_prop, etc.
+
         formatted_lead = {
-            "first_name": lead.get("first_name", ""),
-            "last_name": lead.get("last_name", ""),
-            "linkedin_url": lead.get("linkedin_url", ""),
-            "company_name": lead.get("company_name", ""),
-            "title": lead.get("title", ""),
-            "custom_variables": {
-                "personalized_line": lead.get("personalized_line", "")
-            }
+            "firstName": lead.get("first_name", ""),
+            "lastName": lead.get("last_name", ""),
+            "profileUrl": lead.get("linkedin_url", ""),
+            "companyName": lead.get("company_name", ""),
+            "position": lead.get("title", ""),
+            "emailAddress": lead.get("email", ""),
+            "location": lead.get("location", ""),
+            "customUserFields": custom_fields
         }
         formatted_leads.append(formatted_lead)
     
@@ -172,8 +188,9 @@ def start_campaign(campaign_id):
     Start the campaign (begin sending).
     """
     headers = {
-        "Authorization": f"Bearer {HEYREACH_API_KEY}",
-        "Content-Type": "application/json"
+        "X-API-KEY": HEYREACH_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
     
     url = f"{HEYREACH_API_BASE}/campaigns/{campaign_id}/start"
@@ -361,5 +378,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
 
 

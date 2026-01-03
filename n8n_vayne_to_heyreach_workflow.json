@@ -1,0 +1,346 @@
+{
+  "name": "Vayne to HeyReach Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "sales_nav_url",
+              "value": "https://www.linkedin.com/sales/search/people?query=(spellCorrectionEnabled%3Atrue)"
+            },
+            {
+              "name": "limit",
+              "value": "20"
+            },
+            {
+              "name": "heyreach_list_id",
+              "value": "464636"
+            }
+          ]
+        }
+      },
+      "id": "set_input",
+      "name": "Set Input Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "notes": "Set your Sales Nav URL here"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.vayne.io/api/orders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"name\": \"n8n Scrape \" + $now.toISO(),\n  \"url\": $json.sales_nav_url,\n  \"limit\": parseInt($json.limit),\n  \"email_enrichment\": false,\n  \"saved_search\": true,\n  \"secondary_webhook\": \"\",\n  \"export_format\": \"advanced\"\n} }}",
+        "options": {}
+      },
+      "id": "create_vayne_order",
+      "name": "Create Vayne Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Vayne API key"
+        }
+      },
+      "notes": "Creates scraping order in Vayne"
+    },
+    {
+      "parameters": {
+        "amount": 120,
+        "unit": "seconds"
+      },
+      "id": "wait_scraping",
+      "name": "Wait for Scraping",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "webhookId": "wait-webhook-id",
+      "notes": "Wait 2 minutes for Vayne to scrape"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.vayne.io/api/orders/{{ $json.order.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "poll_status",
+      "name": "Poll Order Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Vayne API key"
+        }
+      },
+      "notes": "Check if scraping is done"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.order.scraping_status }}",
+              "value2": "finished"
+            }
+          ]
+        }
+      },
+      "id": "check_if_finished",
+      "name": "Check if Finished",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait_retry",
+      "name": "Wait & Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1250, 480],
+      "webhookId": "wait-retry-webhook-id",
+      "notes": "Wait 30s then check again"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.order.exports.advanced.file_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "download_csv",
+      "name": "Download CSV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 300],
+      "notes": "Download the CSV file from Vayne"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csvParse = require('csv-parse/sync');\n\n// Get CSV text from previous node\nconst csvText = $input.item.json.data;\n\n// Parse CSV\nconst records = csvParse.parse(csvText, {\n  columns: true,\n  skip_empty_lines: true\n});\n\n// Map to clean format with proper field names\nconst profiles = records.map(record => ({\n  first_name: record['first name'] || '',\n  last_name: record['last name'] || '',\n  email: record['email'] || '',\n  linkedin_url: record['linkedin url'] || '',\n  location: record['location'] || '',\n  headline: record['headline'] || '',\n  summary: record['summary'] || '',\n  company: record['company'] || '',\n  job_title: record['job title'] || '',\n  job_description: record['job description'] || '',\n  skills: record['skills'] || '',\n  languages: record['languages'] || '',\n  company_description: record['linkedin description'] || '',\n  company_website: record['corporate website'] || ''\n}));\n\n// Return array of profiles\nreturn profiles.map(profile => ({ json: profile }));"
+      },
+      "id": "parse_csv",
+      "name": "Parse CSV to JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1650, 300],
+      "notes": "Convert CSV to JSON array"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate personalized messages using Claude API\nconst axios = require('axios');\n\nconst ANTHROPIC_API_KEY = $env.ANTHROPIC_API_KEY;\nconst items = $input.all();\n\n// Process each profile\nconst results = [];\n\nfor (const item of items) {\n  const profile = item.json;\n  \n  // Build prompt for personalization\n  const prompt = `You are writing a personalized LinkedIn outreach message.\n\nProfile:\n- Name: ${profile.first_name} ${profile.last_name}\n- Title: ${profile.job_title}\n- Company: ${profile.company}\n- Location: ${profile.location}\n- About: ${profile.summary}\n- Job Description: ${profile.job_description}\n\nWrite a brief, personalized message (under 150 words) that includes:\n1. A specific observation about their business or role\n2. ONE relevant question about their work\n3. A brief location-based comment\n\nBe conversational and genuine. Don't mention you're using AI.`;\n\n  try {\n    const response = await axios.post('https://api.anthropic.com/v1/messages', {\n      model: 'claude-sonnet-4-20250514',\n      max_tokens: 300,\n      messages: [{\n        role: 'user',\n        content: prompt\n      }]\n    }, {\n      headers: {\n        'x-api-key': ANTHROPIC_API_KEY,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      }\n    });\n\n    profile.personalized_message = response.data.content[0].text.trim();\n  } catch (error) {\n    console.error(`Error generating message for ${profile.first_name}: ${error.message}`);\n    profile.personalized_message = '';\n  }\n\n  results.push({ json: profile });\n}\n\nreturn results;"
+      },
+      "id": "generate_personalization",
+      "name": "Generate Personalization",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1850, 300],
+      "notes": "Generate personalized messages using Claude API"
+    },
+    {
+      "parameters": {
+        "url": "https://api.heyreach.io/api/public/list/AddLeadsToListV2",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  {\n    \"leads\": $input.all().map(item => ({\n      \"firstName\": item.json.first_name,\n      \"lastName\": item.json.last_name,\n      \"profileUrl\": item.json.linkedin_url,\n      \"location\": item.json.location,\n      \"companyName\": item.json.company,\n      \"position\": item.json.job_title,\n      \"emailAddress\": item.json.email,\n      \"customUserFields\": [\n        {\n          \"name\": \"about_section\",\n          \"value\": (item.json.summary || '').substring(0, 1000)\n        },\n        {\n          \"name\": \"job_description\",\n          \"value\": (item.json.job_description || '').substring(0, 500)\n        },\n        {\n          \"name\": \"personalized_message\",\n          \"value\": item.json.personalized_message || ''\n        }\n      ]\n    })),\n    \"listId\": parseInt($('Set Input Variables').item.json.heyreach_list_id)\n  }\n}}",
+        "options": {}
+      },
+      "id": "send_to_heyreach",
+      "name": "Send to HeyReach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2050, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "HeyReach API (X-API-KEY)"
+        }
+      },
+      "notes": "Upload all leads to HeyReach with custom fields"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Input Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input Variables": {
+      "main": [
+        [
+          {
+            "node": "Create Vayne Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Vayne Order": {
+      "main": [
+        [
+          {
+            "node": "Wait for Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Scraping": {
+      "main": [
+        [
+          {
+            "node": "Poll Order Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Order Status": {
+      "main": [
+        [
+          {
+            "node": "Check if Finished",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Finished": {
+      "main": [
+        [
+          {
+            "node": "Download CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait & Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait & Retry": {
+      "main": [
+        [
+          {
+            "node": "Poll Order Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download CSV": {
+      "main": [
+        [
+          {
+            "node": "Parse CSV to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse CSV to JSON": {
+      "main": [
+        [
+          {
+            "node": "Generate Personalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Personalization": {
+      "main": [
+        [
+          {
+            "node": "Send to HeyReach",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-24T00:00:00.000Z",
+  "versionId": "1"
+}

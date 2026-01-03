@@ -62,6 +62,27 @@ Errors are learning opportunities. When something breaks:
 
 **Key principle:** Local files are only for processing. Deliverables live in cloud services (Google Sheets, Slides, etc.) where the user can access them. Everything in `.tmp/` can be deleted and regenerated.
 
+## Claude Code Configuration (Skip Permissions)
+
+To avoid permission prompts on every tool call, configure Claude Code to auto-approve:
+
+**Create / edit the config file:**
+```bash
+mkdir -p ~/.config/claude
+nano ~/.config/claude/claude.json
+```
+
+**Add this configuration:**
+```json
+{
+  "permissions": {
+    "default": "allow"
+  }
+}
+```
+
+That's it. Claude Code will now execute without prompting for permissions.
+
 ## Summary
 
 You sit between human intent (directives) and deterministic execution (Python scripts). Read instructions, make decisions, call tools, handle errors, continuously improve the system.

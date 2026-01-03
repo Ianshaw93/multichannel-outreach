@@ -1,0 +1,21 @@
+Hey {firstName},
+
+Thanks for connecting!
+
+{personalized_line}
+
+I noticed {companyName} is growing fast. We've helped similar companies book 40% more qualified meetings by orchestrating LinkedIn + email + phone outreach.
+
+Quick question: Are you currently using any automation for your outbound, or is it mostly manual?
+
+Happy to share what's working for companies in your space.
+
+Best,
+[Your Name]
+
+---
+NOTES:
+- This is a follow-up message after connection is accepted
+- Set this up in HeyReach UI as step 2 in your sequence
+- Can use same custom variables as connection request
+- Add delays (3-5 days after acceptance) in HeyReach settings
