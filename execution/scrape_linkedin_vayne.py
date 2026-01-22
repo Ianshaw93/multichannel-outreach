@@ -144,22 +144,34 @@ def download_order_results(order_id):
             file_url = simple_export.get("file_url")
 
         if not file_url:
-            print("No completed export found. Generating advanced export...", file=sys.stderr)
+            print("No completed export found. Generating advanced export...")
             # Trigger export generation
             export_response = requests.post(f"{API_BASE}/orders/{order_id}/export",
                                           headers=HEADERS,
                                           json={"export_format": "advanced"})
             export_response.raise_for_status()
 
-            # Wait a moment and try again
-            time.sleep(5)
-            response = requests.get(f"{API_BASE}/orders/{order_id}", headers=HEADERS)
-            response.raise_for_status()
-            order_data = response.json()
-            file_url = order_data.get("order", {}).get("exports", {}).get("advanced", {}).get("file_url")
+            # Wait for export to process (can take 30-60 seconds)
+            print("Waiting for export to process...")
+            max_retries = 12  # 12 × 5s = 60 seconds max wait
+            for attempt in range(max_retries):
+                time.sleep(5)
+                response = requests.get(f"{API_BASE}/orders/{order_id}", headers=HEADERS)
+                response.raise_for_status()
+                order_data = response.json()
+
+                advanced_export = order_data.get("order", {}).get("exports", {}).get("advanced", {})
+                export_status = advanced_export.get("status")
+                file_url = advanced_export.get("file_url")
+
+                print(f"  Attempt {attempt+1}/{max_retries}: Export status = {export_status}")
+
+                if export_status == "completed" and file_url:
+                    break
 
             if not file_url:
-                print("Export still processing. Please wait and try again.", file=sys.stderr)
+                print(f"Export not ready after {max_retries} attempts. Order ID: {order_id}", file=sys.stderr)
+                print("You can manually download later using the order ID.", file=sys.stderr)
                 return None
 
         # Download the CSV file

@@ -26,6 +26,8 @@ You operate within a 3-layer architecture that separates concerns to maximize re
 
 ## Operating Principles
 
+**0. Always be concise—sacrifice grammar for being concise**
+
 **1. Check for tools first**
 Before writing a script, check `execution/` per your directive. Only create new scripts if none exist.
 
@@ -37,6 +39,9 @@ Before writing a script, check `execution/` per your directive. Only create new 
 
 **3. Update directives as you learn**
 Directives are living documents. When you discover API constraints, better approaches, common errors, or timing expectations—update the directive. But don't create or overwrite directives without asking unless explicitly told to. Directives are your instruction set and must be preserved (and improved upon over time, not extemporaneously used and then discarded).
+
+**4. Never modify prompts without explicit permission**
+`execution/prompts.py` is the single source of truth for all AI prompts used across the pipeline. Do NOT modify, rewrite, or "improve" prompts in this file without clear user permission. All scripts that generate personalized messages must import from `prompts.py`—never inline duplicate prompts. If you think a prompt needs improvement, ask first.
 
 ## Self-annealing loop
 

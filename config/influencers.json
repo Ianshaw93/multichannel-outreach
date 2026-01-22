@@ -1,0 +1,28 @@
+{
+  "description": "Industry influencer accounts to monitor - people engaging with their posts are interested in your niche",
+  "influencers": [
+    {
+      "name": "Alex Hormozi",
+      "linkedin_url": "https://linkedin.com/in/alexhormozi",
+      "niche": "Scaling agencies & businesses",
+      "notes": "Followers are agency owners and entrepreneurs looking to scale"
+    },
+    {
+      "name": "Dan Martell",
+      "linkedin_url": "https://linkedin.com/in/danmartell",
+      "niche": "SaaS coaching & growth",
+      "notes": "Followers are SaaS founders and tech entrepreneurs"
+    },
+    {
+      "name": "Example Influencer",
+      "linkedin_url": "https://linkedin.com/in/REPLACE_WITH_ACTUAL_URL",
+      "niche": "Your industry",
+      "notes": "Add more influencers in your target space"
+    }
+  ],
+  "instructions": "Add LinkedIn profile URLs of thought leaders in your industry. The monitor will scrape their recent posts and find people who engage with them.",
+  "min_post_age_hours": 24,
+  "max_post_age_hours": 48,
+  "min_engagement": 20,
+  "countries": ["United States", "Canada"]
+}

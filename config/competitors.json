@@ -1,0 +1,16 @@
+{
+  "description": "Competitor accounts to monitor - people engaging with their posts are evaluating similar solutions",
+  "competitors": [
+    {
+      "name": "Example Competitor CEO",
+      "linkedin_url": "https://linkedin.com/in/REPLACE_WITH_ACTUAL_URL",
+      "company": "Competitor Company",
+      "notes": "Replace with actual competitor LinkedIn profile URLs"
+    }
+  ],
+  "instructions": "Add LinkedIn profile URLs of competitor founders, CEOs, or company pages. The monitor will scrape their recent posts and find people who engage with them.",
+  "min_post_age_hours": 24,
+  "max_post_age_hours": 48,
+  "min_engagement": 10,
+  "countries": ["United States", "Canada"]
+}

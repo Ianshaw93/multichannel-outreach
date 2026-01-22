@@ -1,0 +1,20 @@
+{
+  "description": "Pain point keywords to monitor for keyword engagement signal",
+  "keywords": [
+    "struggling with LinkedIn outreach",
+    "struggling with outbound",
+    "tired of cold email",
+    "cold email not working",
+    "low reply rate",
+    "need qualified leads",
+    "sales automation not working",
+    "outbound not converting",
+    "agencies charging too much",
+    "need better lead gen",
+    "LinkedIn automation help"
+  ],
+  "search_context": "Decision makers expressing pain points in sales/outreach space",
+  "min_reactions": 50,
+  "days_back": 7,
+  "countries": ["United States", "Canada"]
+}

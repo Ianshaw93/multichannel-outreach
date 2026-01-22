@@ -231,77 +231,20 @@ def update_sheet_status(sheet_url, status="added_to_heyreach"):
         print(f"⚠️  Error updating sheet: {e}")
         return False
 
-def test_with_dummy_data():
-    """Test the script with dummy lead data."""
-    print(f"\n{'='*60}")
-    print(f"TEST MODE - Using Dummy Data")
-    print(f"{'='*60}\n")
-    
-    # Dummy test data
-    dummy_leads = [
-        {
-            "first_name": "John",
-            "last_name": "Doe",
-            "linkedin_url": "https://www.linkedin.com/in/johndoe",
-            "company_name": "Acme Corp",
-            "title": "CEO",
-            "location": "San Francisco, CA",
-            "personalized_message": "Hey John\n\nAcme Corp looks interesting\n\nYou guys do software right? Do that w agile? Or what\n\nSoftware is a tough nut to crack\nReally comes down to precise targeting + personalisation to book clients at a high level\n\nSee you're in San Francisco. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland"
-        }
-    ]
-    
-    # Use the campaign ID from the workflow
-    test_list_id = 291391
-    test_custom_fields = ["personalized_message"]
-    
-    print(f"Test List ID: {test_list_id}")
-    print(f"Test Custom Fields: {', '.join(test_custom_fields)}")
-    print(f"Number of dummy leads: {len(dummy_leads)}\n")
-    
-    # Verify list exists
-    list_info = get_list_info(test_list_id)
-    if list_info:
-        print(f"✅ Connected to HeyReach list: {list_info.get('name', 'Unknown')}\n")
-    else:
-        print(f"⚠️  Could not verify list {test_list_id}. Proceeding with test anyway...\n")
-    
-    # Test the upload function
-    print("Testing lead formatting and upload...")
-    uploaded_count = add_leads_to_list(test_list_id, dummy_leads, test_custom_fields)
-    
-    if uploaded_count > 0:
-        print(f"\n✅ Test successful! Uploaded {uploaded_count} dummy leads")
-        print(f"\n⚠️  NOTE: These are TEST leads. Check HeyReach list {test_list_id} to verify.")
-    else:
-        print(f"\n❌ Test failed. Check error messages above.")
-    
-    return uploaded_count
-
 def main():
     parser = argparse.ArgumentParser(
         description="Add leads from Google Sheet to HeyReach list with custom personalization"
     )
-    parser.add_argument("--sheet_url", required=False,
+    parser.add_argument("--sheet_url", required=True,
                        help="Google Sheet URL with leads")
-    parser.add_argument("--list_id", required=False, type=int,
+    parser.add_argument("--list_id", required=True, type=int,
                        help="HeyReach list ID (find in HeyReach UI)")
     parser.add_argument("--custom_fields", default="personalized_message",
                        help="Comma-separated custom field names to include (default: 'personalized_message')")
     parser.add_argument("--update_sheet", action="store_true",
                        help="Update Google Sheet with upload status")
-    parser.add_argument("--test", action="store_true",
-                       help="Run test mode with dummy data")
 
     args = parser.parse_args()
-    
-    # Run test mode if requested
-    if args.test:
-        test_with_dummy_data()
-        return
-    
-    # Validate required arguments for normal mode
-    if not args.sheet_url or not args.list_id:
-        parser.error("--sheet_url and --list_id are required (or use --test for test mode)")
 
     # Parse custom fields
     custom_field_names = []

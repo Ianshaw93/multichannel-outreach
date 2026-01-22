@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "npx trigger.dev@latest dev",
     "deploy": "npx trigger.dev@latest deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "compPosts": "python execution/competitor_post_pipeline.py"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

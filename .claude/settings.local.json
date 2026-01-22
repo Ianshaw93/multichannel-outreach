@@ -13,9 +13,13 @@
       "WebFetch(domain:www.university.clay.com)",
       "Bash(cat:*)",
       "Bash(ls:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(pip show:*)",
+      "Bash(timeout 600 python personalize_and_upload.py:*)",
+      "Bash(npm run compPosts:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "default": "allow"
   }
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Complete flow: Vayne JSON → Personalize → Upload to HeyReach
+Complete flow: Vayne JSON → ICP Check (DeepSeek) → Personalize → Upload to HeyReach
 Bypasses Google Sheets entirely for simpler execution.
 """
 
@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from prompts import get_linkedin_5_line_prompt
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
@@ -23,104 +24,121 @@ load_dotenv()
 
 HEYREACH_API_KEY = os.getenv("HEYREACH_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 HEYREACH_API_BASE = "https://api.heyreach.io/api/public"
+DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 
-def get_personalization_prompt():
-    """Get the 5-line LinkedIn DM prompt template."""
-    return """You create **5-line LinkedIn DMs** that feel personal and conversational — balancing business relevance with personal connection and strict template wording.
+def check_icp_match(lead, icp_criteria=None):
+    """
+    Check if lead matches ICP using DeepSeek (cheap and fast).
+    Returns dict with 'match' (bool), 'confidence' (str), and 'reason' (str).
 
-## TASK
-Generate 5 lines:
-1. **Greeting** → Hey [FirstName]
-2. **Profile hook** → [CompanyName] looks interesting
-3. **Business related Inquiry** → You guys do [service] right? Do that w [method]? Or what
-4. **Authority building Hook** → 2-line authority statement based on industry (see rules below)
-5. **Location Hook** → See you're in [city/region]. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland
+    Uses default ICP for Sales Automation and Personal Branding agency if not specified.
+    """
+    if not DEEPSEEK_API_KEY:
+        print("  ⚠️  Warning: DEEPSEEK_API_KEY not found, skipping ICP check")
+        return {"match": True, "confidence": "skipped", "reason": "No API key"}
 
----
+    lead_summary = f"""
+Lead: {lead.get('full_name', 'Unknown')}
+Title: {lead.get('job_title', lead.get('title', 'Unknown'))}
+Company: {lead.get('company', lead.get('company_name', 'Unknown'))}
+Location: {lead.get('location', 'Unknown')}
+Industry: {lead.get('industry', 'N/A')}
+"""
 
-# PROFILE HOOK TEMPLATE (LINE 2)
+    # Use custom ICP criteria if provided, otherwise use default for Sales Automation agency
+    if not icp_criteria:
+        system_prompt = """Role: B2B Lead Qualification Filter.
 
-Template: [CompanyName] looks interesting
+Objective: Categorize LinkedIn profiles based on Authority and Industry fit for a Sales Automation and Personal Branding agency.
 
-Rules:
-● Use their current company name (not past companies)
-● Always "looks interesting" (not "sounds interesting" or other variations)
-● No exclamation marks
-● Keep it casual
+Rules for Authority (Strict):
+- Qualify: CEOs, Founders, Co-Founders, Managing Directors, Owners, Partners, VPs, and C-Suite executives.
+- Reject: Interns, Students, Junior staff, Administrative assistants (e.g., "Assessor administrativo"), and low-level individual contributors.
 
----
+Rules for B2B Industry (Lenient):
+- Qualify: High-ticket service industries (Agencies, SaaS, Consulting, Coaching, Tech).
 
-# BUSINESS INQUIRY TEMPLATE (LINE 3)
+The "Benefit of Doubt" Rule: If you are unsure if a business is B2B or B2C, or unsure if the person is a top-level decision-maker, Qualify them (Set to true). Only reject if they are clearly non-decision makers or in non-business roles.
 
-Template: You guys do [service] right? Do that w [method]? Or what
+Hard Rejections:
+- Leads from massive traditional Banking/Financial institutions (e.g., Santander, Getnet).
+- Physical labor or local retail roles (e.g., Driver, Technician, Cashier).
 
-Rules:
-● Infer [service] from their company/title (e.g., "paid ads", "branding", "outbound", "CRM", "analytics")
-● Infer [method] based on common methods for that service
-● Keep it casual and conversational
-● Use "w" instead of "with"
+You are an expert at evaluating sales leads. Always respond with valid JSON."""
+        user_prompt = f"""Evaluate this LinkedIn profile:
 
----
+{lead_summary}
 
-# AUTHORITY STATEMENT GENERATION (LINE 4 - 2 LINES)
+Respond in JSON format:
+{{
+  "match": true/false,
+  "confidence": "high" | "medium" | "low",
+  "reason": "Brief explanation (1 sentence)"
+}}"""
+    else:
+        # Custom ICP criteria provided
+        system_prompt = "You are an expert at evaluating sales leads against ICP criteria. Always respond with valid JSON."
+        user_prompt = f"""You are verifying if a LinkedIn lead matches the Ideal Customer Profile (ICP).
 
-You MUST follow the exact template, rules, and constraints below.
-
-**Line 1 — X is Y.**
-A simple, universally true industry insight.
-
-**Line 2 — Business outcome (money / revenue / scaling / clients).**
-Tie the idea directly to something founders actually care about.
-
-## RULES YOU MUST FOLLOW
-
-1. The result must always be EXACTLY 2 lines. Never more, never fewer.
-2. No fluff. No generic statements.
-3. No repeating the same idea twice.
-4. Every term MUST be used accurately.
-5. Every final line MUST connect to MONEY.
-6. Use Founder Voice. Short, direct, conversational.
-7. Everything must be TRUE.
-
----
-
-# LOCATION HOOK TEMPLATE (LINE 5)
-
-Template (word-for-word, only replace [city/region]):
-See you're in [city/region]. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland
-
----
-
-# OUTPUT FORMAT
-
-Always output 5 lines (Greeting → Profile hook → Business Inquiry → Authority Statement → Location Hook).
-
-Take a new paragraph (blank line) between each line.
-
-Only output the line contents - NOT section labels like "Greeting:". The full message will be sent on LinkedIn as is.
-
-DO NOT include long dashes (---) in the output.
-
-Only return the message - the full reply will be sent on LinkedIn directly.
-
----
+ICP Criteria: {icp_criteria}
 
 Lead Information:
-- First Name: {first_name}
-- Company: {company_name}
-- Title: {title}
-- Location: {location}
+{lead_summary}
 
-Generate the complete 5-line LinkedIn DM now. Return ONLY the message (no explanation, no labels, no formatting)."""
+Task: Determine if this lead matches the ICP.
+
+Respond in JSON format:
+{{
+  "match": true/false,
+  "confidence": "high" | "medium" | "low",
+  "reason": "Brief explanation (1 sentence)"
+}}"""
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "max_tokens": 150,
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"}
+        }
+
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+
+        data = response.json()
+        result_text = data["choices"][0]["message"]["content"]
+        result = json.loads(result_text)
+        return result
+
+    except Exception as e:
+        print(f"  ⚠️  Error checking ICP: {e}")
+        # Default to accepting if API fails (benefit of doubt)
+        return {"match": True, "confidence": "error", "reason": str(e)}
+
+def get_personalization_prompt():
+    """
+    DEPRECATED: Use prompts.get_linkedin_5_line_prompt() instead.
+    This function kept for backwards compatibility.
+    """
+    from prompts import LINKEDIN_5_LINE_DM_PROMPT
+    return LINKEDIN_5_LINE_DM_PROMPT
 
 def generate_personalization(lead):
-    """Generate a personalized 5-line LinkedIn DM using ChatGPT."""
-    if not OPENAI_API_KEY:
-        print("  ⚠️  Error: OPENAI_API_KEY not found in .env")
+    """Generate a personalized 5-line LinkedIn DM using DeepSeek."""
+    if not DEEPSEEK_API_KEY:
+        print("  ⚠️  Error: DEEPSEEK_API_KEY not found in .env")
         return None
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
 
     # Extract first name
     full_name = lead.get("full_name", lead.get("first_name", ""))
@@ -131,26 +149,37 @@ def generate_personalization(lead):
     if "," in location:
         location = location.split(",")[0].strip()
 
-    # Fill in the prompt template
-    prompt = get_personalization_prompt().format(
+    # Get formatted prompt from central source (now includes headline + company description)
+    prompt = get_linkedin_5_line_prompt(
         first_name=first_name,
-        title=lead.get("job_title", lead.get("title", "")),
         company_name=lead.get("company", lead.get("company_name", "")),
+        title=lead.get("job_title", lead.get("title", "")),
+        headline=lead.get("headline", ""),
+        company_description=lead.get("company_description", ""),
         location=location
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [
                 {"role": "system", "content": "You are an expert at creating personalized LinkedIn DMs following strict template rules."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=400,
-            temperature=0.7
-        )
+            "max_tokens": 400,
+            "temperature": 0.7
+        }
 
-        linkedin_message = response.choices[0].message.content.strip()
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+
+        data = response.json()
+        linkedin_message = data["choices"][0]["message"]["content"].strip()
 
         # Clean up
         if linkedin_message.startswith('"') and linkedin_message.endswith('"'):
@@ -163,18 +192,19 @@ def generate_personalization(lead):
         print(f"  ⚠️  Error generating personalization: {e}")
         return None
 
-def personalize_leads(input_file, output_file):
-    """Generate personalized messages for all leads."""
+def personalize_leads(input_file, output_file, icp_criteria=None, skip_icp_check=False):
+    """Generate personalized messages for all leads, with optional ICP filtering."""
     # Load leads
     with open(input_file, 'r', encoding='utf-8') as f:
         leads = json.load(f)
 
-    print(f"\nFound {len(leads)} leads to personalize\n")
+    print(f"\nFound {len(leads)} leads to process\n")
 
     # Process leads in parallel
     personalized_leads = []
     success_count = 0
     failed_count = 0
+    icp_rejected_count = 0
 
     def process_lead(idx_and_lead):
         idx, lead = idx_and_lead
@@ -182,30 +212,44 @@ def personalize_leads(input_file, output_file):
         # Skip if already has personalization
         if lead.get("personalized_message"):
             print(f"  [SKIP] #{idx+1}: Already personalized, skipping")
-            return lead
+            return lead, "skipped"
 
-        # Generate personalization
+        # Step 1: ICP Check (if not skipped)
+        if not skip_icp_check:
+            icp_result = check_icp_match(lead, icp_criteria)
+            lead["icp_match"] = icp_result.get("match", True)
+            lead["icp_confidence"] = icp_result.get("confidence", "unknown")
+            lead["icp_reason"] = icp_result.get("reason", "")
+
+            if not icp_result.get("match", True):
+                print(f"  [ICP-REJECT] #{idx+1}: {lead.get('full_name', 'Unknown')} - {icp_result.get('reason', '')}")
+                return lead, "icp_rejected"
+
+        # Step 2: Generate personalization (only if ICP passed)
         personalized_line = generate_personalization(lead)
 
         if personalized_line:
             print(f"  [OK] #{idx+1}: {lead.get('full_name', 'Unknown')}")
             lead["personalized_message"] = personalized_line
-            return lead
+            return lead, "success"
         else:
             print(f"  [FAIL] #{idx+1}: Failed for {lead.get('full_name', 'Unknown')}")
-            return lead
+            return lead, "failed"
 
     # Use ThreadPoolExecutor for parallel API calls
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(process_lead, (idx, lead)): idx for idx, lead in enumerate(leads)}
 
         for future in as_completed(futures):
-            result = future.result()
+            result, status = future.result()
             personalized_leads.append(result)
-            if result.get("personalized_message"):
+
+            if status == "success":
                 success_count += 1
-            else:
+            elif status == "failed":
                 failed_count += 1
+            elif status == "icp_rejected":
+                icp_rejected_count += 1
 
     # Sort back to original order
     personalized_leads.sort(key=lambda x: leads.index(x))
@@ -218,8 +262,11 @@ def personalize_leads(input_file, output_file):
     print(f"PERSONALIZATION SUMMARY")
     print(f"{'='*60}")
     print(f"Total leads: {len(leads)}")
+    if not skip_icp_check:
+        print(f"  [ICP-REJECT] Rejected by ICP: {icp_rejected_count}")
     print(f"  [OK] Personalized: {success_count}")
     print(f"  [FAIL] Failed: {failed_count}")
+    print(f"  [SKIP] Already done: {len(leads) - success_count - failed_count - icp_rejected_count}")
     print(f"  [SAVED] Output: {output_file}")
     print(f"{'='*60}")
 
@@ -309,31 +356,52 @@ def upload_to_heyreach(leads, list_id):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Complete flow: Vayne JSON → Personalize → Upload to HeyReach"
+        description="Complete flow: Vayne JSON → ICP Check → Personalize → Upload to HeyReach"
     )
     parser.add_argument("--input", default=".tmp/vayne_profiles.json",
                        help="Input JSON file with Vayne profiles")
     parser.add_argument("--output", default=".tmp/vayne_profiles_personalized.json",
                        help="Output JSON file with personalized messages")
-    parser.add_argument("--list_id", type=int, required=True,
-                       help="HeyReach list ID to upload to")
+    parser.add_argument("--list_id", type=int, default=471112,
+                       help="HeyReach list ID to upload to (default: 471112)")
+    parser.add_argument("--icp_criteria",
+                       help="ICP criteria for filtering (e.g. 'Founders and C-level execs in B2B SaaS companies')")
+    parser.add_argument("--skip_icp_check", action="store_true",
+                       help="Skip ICP filtering step")
     parser.add_argument("--skip_personalization", action="store_true",
                        help="Skip personalization step (use existing output file)")
 
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
-    print(f"VAYNE > PERSONALIZE > HEYREACH")
+    print(f"VAYNE > ICP CHECK > PERSONALIZE > HEYREACH")
     print(f"{'='*60}")
     print(f"Input: {args.input}")
     print(f"Output: {args.output}")
     print(f"HeyReach List ID: {args.list_id}")
+    if not args.skip_icp_check:
+        if args.icp_criteria:
+            print(f"ICP Criteria: {args.icp_criteria}")
+        else:
+            print(f"ICP Criteria: Default (Sales Automation & Personal Branding)")
+    else:
+        print(f"ICP Check: SKIPPED")
     print(f"{'='*60}\n")
 
-    # Step 1: Personalize (unless skipped)
+    # Step 1: ICP Check + Personalize (unless skipped)
     if not args.skip_personalization:
-        print("STEP 1: Generating personalized 5-line LinkedIn DMs...\n")
-        personalized_leads = personalize_leads(args.input, args.output)
+        if not args.skip_icp_check:
+            icp_desc = f"custom ICP: {args.icp_criteria}" if args.icp_criteria else "default Sales Automation ICP"
+            print(f"STEP 1: ICP filtering ({icp_desc}) + Personalization with GPT-4o...\n")
+        else:
+            print("STEP 1: Generating personalized 5-line LinkedIn DMs (ICP check skipped)...\n")
+
+        personalized_leads = personalize_leads(
+            args.input,
+            args.output,
+            icp_criteria=args.icp_criteria,
+            skip_icp_check=args.skip_icp_check
+        )
     else:
         print("STEP 1: Skipping personalization (using existing file)...\n")
         with open(args.output, 'r', encoding='utf-8') as f:
