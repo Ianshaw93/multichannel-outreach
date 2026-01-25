@@ -9,13 +9,14 @@ import sys
 import json
 import argparse
 import time
+import requests
 from dotenv import load_dotenv
-import anthropic
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 
 VALIDATION_PROMPT = """You are a strict accuracy validator for LinkedIn outreach messages.
 
@@ -61,8 +62,8 @@ Flag rules:
 """
 
 
-def validate_single(lead: dict, client: anthropic.Anthropic, model: str) -> dict:
-    """Validate a single lead's personalized message."""
+def validate_single(lead: dict, model: str) -> dict:
+    """Validate a single lead's personalized message using DeepSeek."""
     prompt = VALIDATION_PROMPT.format(
         full_name=lead.get("full_name", ""),
         headline=lead.get("headline", "(not available)"),
@@ -75,14 +76,24 @@ def validate_single(lead: dict, client: anthropic.Anthropic, model: str) -> dict
         personalized_message=lead.get("personalized_message", "(no message)")
     )
 
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=500,
-            messages=[{"role": "user", "content": prompt}]
-        )
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-        result_text = response.content[0].text.strip()
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1,
+        "max_tokens": 500
+    }
+
+    try:
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+
+        result_text = response.json()["choices"][0]["message"]["content"].strip()
+
         # Clean up potential markdown
         if result_text.startswith("```"):
             result_text = result_text.split("```")[1]
@@ -103,6 +114,13 @@ def validate_single(lead: dict, client: anthropic.Anthropic, model: str) -> dict
             "raw_response": result_text if 'result_text' in dir() else "no response",
             "flag": "ERROR"
         }
+    except requests.exceptions.RequestException as e:
+        return {
+            "full_name": lead.get("full_name", "Unknown"),
+            "linkedin_url": lead.get("linkedin_url", ""),
+            "error": str(e),
+            "flag": "ERROR"
+        }
     except Exception as e:
         return {
             "full_name": lead.get("full_name", "Unknown"),
@@ -112,10 +130,12 @@ def validate_single(lead: dict, client: anthropic.Anthropic, model: str) -> dict
         }
 
 
-def validate_batch(input_file: str, output_file: str = None, sample_size: int = None, model: str = "claude-3-5-haiku-latest"):
+def validate_batch(input_file: str, output_file: str = None, sample_size: int = None, model: str = "deepseek-chat"):
     """Validate a batch of personalized messages."""
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    if not DEEPSEEK_API_KEY:
+        print("ERROR: DEEPSEEK_API_KEY not found in environment")
+        sys.exit(1)
 
     # Load leads
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -132,9 +152,9 @@ def validate_batch(input_file: str, output_file: str = None, sample_size: int = 
 
     results = []
 
-    # Process sequentially to avoid rate limits (Anthropic has lower limits)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = {executor.submit(validate_single, lead, client, model): lead for lead in leads_with_messages}
+    # Process with limited concurrency to avoid rate limits
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(validate_single, lead, model): lead for lead in leads_with_messages}
 
         for i, future in enumerate(as_completed(futures), 1):
             result = future.result()
@@ -219,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument("input_file", help="JSON file with personalized messages")
     parser.add_argument("--output", "-o", help="Output file for validation results")
     parser.add_argument("--sample", "-s", type=int, help="Validate only N random samples")
-    parser.add_argument("--model", "-m", default="claude-3-5-haiku-latest", help="Model to use for validation (default: claude-3-5-haiku-latest)")
+    parser.add_argument("--model", "-m", default="deepseek-chat", help="Model to use (default: deepseek-chat)")
 
     args = parser.parse_args()
 
