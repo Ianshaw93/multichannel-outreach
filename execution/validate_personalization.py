@@ -8,11 +8,14 @@ import os
 import sys
 import json
 import argparse
+import time
 from dotenv import load_dotenv
-from openai import OpenAI
+import anthropic
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
+
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 VALIDATION_PROMPT = """You are a strict accuracy validator for LinkedIn outreach messages.
 
@@ -58,7 +61,7 @@ Flag rules:
 """
 
 
-def validate_single(lead: dict, client: OpenAI, model: str) -> dict:
+def validate_single(lead: dict, client: anthropic.Anthropic, model: str) -> dict:
     """Validate a single lead's personalized message."""
     prompt = VALIDATION_PROMPT.format(
         full_name=lead.get("full_name", ""),
@@ -73,14 +76,13 @@ def validate_single(lead: dict, client: OpenAI, model: str) -> dict:
     )
 
     try:
-        response = client.chat.completions.create(
+        response = client.messages.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=500
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        result_text = response.choices[0].message.content.strip()
+        result_text = response.content[0].text.strip()
         # Clean up potential markdown
         if result_text.startswith("```"):
             result_text = result_text.split("```")[1]
@@ -110,10 +112,10 @@ def validate_single(lead: dict, client: OpenAI, model: str) -> dict:
         }
 
 
-def validate_batch(input_file: str, output_file: str = None, sample_size: int = None, model: str = "gpt-4o-mini"):
+def validate_batch(input_file: str, output_file: str = None, sample_size: int = None, model: str = "claude-3-5-haiku-latest"):
     """Validate a batch of personalized messages."""
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     # Load leads
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -130,8 +132,8 @@ def validate_batch(input_file: str, output_file: str = None, sample_size: int = 
 
     results = []
 
-    # Process with threading for speed
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    # Process sequentially to avoid rate limits (Anthropic has lower limits)
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {executor.submit(validate_single, lead, client, model): lead for lead in leads_with_messages}
 
         for i, future in enumerate(as_completed(futures), 1):
@@ -217,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument("input_file", help="JSON file with personalized messages")
     parser.add_argument("--output", "-o", help="Output file for validation results")
     parser.add_argument("--sample", "-s", type=int, help="Validate only N random samples")
-    parser.add_argument("--model", "-m", default="gpt-4o-mini", help="Model to use for validation (default: gpt-4o-mini)")
+    parser.add_argument("--model", "-m", default="claude-3-5-haiku-latest", help="Model to use for validation (default: claude-3-5-haiku-latest)")
 
     args = parser.parse_args()
 
