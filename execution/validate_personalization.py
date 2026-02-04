@@ -8,11 +8,18 @@ import os
 import sys
 import json
 import argparse
+import requests
 from dotenv import load_dotenv
-from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 load_dotenv()
+
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 
 VALIDATION_PROMPT = """You are a strict accuracy validator for LinkedIn outreach messages.
 
@@ -31,22 +38,30 @@ INPUT DATA:
 GENERATED MESSAGE:
 {personalized_message}
 
+MESSAGE STRUCTURE (5 parts):
+1. Greeting: "Hey [Name]"
+2. Company hook: "[Company] looks interesting"
+3. Service question: "You guys do [service] right? Do that w [method]? Or what"
+4. Authority statement: TWO lines about their industry (e.g., "X is powerful / Really comes down to Y")
+5. Location hook: Casual/informal paragraph about location - IGNORE THIS for scoring (it's intentionally conversational)
+
 SCORE EACH (1-5 scale, where 1=completely wrong, 3=partially accurate, 5=spot on):
 
-1. **Service Accuracy**: Does the "[service]" in "You guys do [service] right?" accurately reflect what the company actually does based on headline + company description?
-   - Score 1 if the service is a complete mischaracterization (e.g., calling a peer network "executive search")
+1. **Service Accuracy**: Does the "[service]" in part 3 accurately reflect what the company actually does?
+   - Score 1 if the service is a complete mischaracterization
    - Score 3 if it's in the right ballpark but imprecise
    - Score 5 if it's exactly what they do
 
-2. **Method Accuracy**: Is the "[method]" realistic for that service type?
+2. **Method Accuracy**: Is the "[method]" in part 3 realistic for that service type?
    - Score 1 if the method makes no sense for their actual business
    - Score 3 if it's a reasonable guess
    - Score 5 if it's clearly how they operate
 
-3. **Industry/Authority Relevance**: Does the authority statement (the "X is powerful/valuable" part) actually apply to their industry?
+3. **Authority Statement Relevance**: Does the 2-line authority statement (part 4, NOT the location hook) apply to their industry?
    - Score 1 if it references a completely different industry
    - Score 3 if it's adjacent but not quite right
    - Score 5 if it's directly relevant to what they do
+   - NOTE: The location paragraph at the end is NOT the authority statement - ignore it
 
 Return ONLY valid JSON (no markdown, no explanation):
 {{"service_score": X, "method_score": X, "authority_score": X, "avg_score": X.X, "inferred_service": "what message claims they do", "actual_service": "what they actually do based on data", "flag": "PASS|REVIEW|FAIL", "reason": "1-2 sentence explanation if REVIEW or FAIL"}}
@@ -58,29 +73,36 @@ Flag rules:
 """
 
 
-def validate_single(lead: dict, client: OpenAI, model: str) -> dict:
+def validate_single(lead: dict, model: str) -> dict:
     """Validate a single lead's personalized message."""
+    # Support both snake_case (from sheets) and camelCase (from Apify)
     prompt = VALIDATION_PROMPT.format(
-        full_name=lead.get("full_name", ""),
-        headline=lead.get("headline", "(not available)"),
-        job_title=lead.get("job_title", "(not available)"),
-        job_description=lead.get("job_description", "(not available)"),
-        company=lead.get("company", "(not available)"),
-        company_description=lead.get("company_description", "(not available)"),
-        company_industry=lead.get("company_industry", "(not available)"),
-        summary=lead.get("summary", "(not available)"),
-        personalized_message=lead.get("personalized_message", "(no message)")
+        full_name=lead.get("full_name") or lead.get("fullName") or "",
+        headline=lead.get("headline") or "(not available)",
+        job_title=lead.get("job_title") or lead.get("jobTitle") or "(not available)",
+        job_description=lead.get("job_description") or lead.get("jobDescription") or "(not available)",
+        company=lead.get("company") or lead.get("companyName") or "(not available)",
+        company_description=lead.get("company_description") or lead.get("companyDescription") or "(not available)",
+        company_industry=lead.get("company_industry") or lead.get("companyIndustry") or "(not available)",
+        summary=lead.get("summary") or lead.get("about") or "(not available)",
+        personalized_message=lead.get("personalized_message") or "(no message)"
     )
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=500
-        )
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": 500
+        }
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
 
-        result_text = response.choices[0].message.content.strip()
+        result_text = response.json()["choices"][0]["message"]["content"].strip()
         # Clean up potential markdown
         if result_text.startswith("```"):
             result_text = result_text.split("```")[1]
@@ -110,10 +132,12 @@ def validate_single(lead: dict, client: OpenAI, model: str) -> dict:
         }
 
 
-def validate_batch(input_file: str, output_file: str = None, sample_size: int = None, model: str = "gpt-4o-mini"):
+def validate_batch(input_file: str, output_file: str = None, sample_size: int = None, model: str = "deepseek-chat"):
     """Validate a batch of personalized messages."""
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    if not DEEPSEEK_API_KEY:
+        print("ERROR: DEEPSEEK_API_KEY not found in .env")
+        sys.exit(1)
 
     # Load leads
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -132,7 +156,7 @@ def validate_batch(input_file: str, output_file: str = None, sample_size: int = 
 
     # Process with threading for speed
     with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(validate_single, lead, client, model): lead for lead in leads_with_messages}
+        futures = {executor.submit(validate_single, lead, model): lead for lead in leads_with_messages}
 
         for i, future in enumerate(as_completed(futures), 1):
             result = future.result()
@@ -217,7 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("input_file", help="JSON file with personalized messages")
     parser.add_argument("--output", "-o", help="Output file for validation results")
     parser.add_argument("--sample", "-s", type=int, help="Validate only N random samples")
-    parser.add_argument("--model", "-m", default="gpt-4o-mini", help="Model to use for validation (default: gpt-4o-mini)")
+    parser.add_argument("--model", "-m", default="deepseek-chat", help="Model to use for validation (default: deepseek-chat)")
 
     args = parser.parse_args()
 

@@ -12,10 +12,12 @@ Send personalized LinkedIn connection requests and follow-up messages using HeyR
 
 ## Tools/Scripts
 - Script: `execution/generate_personalization.py` (AI personalization agent - uses ChatGPT 5.2)
+- Script: `execution/validate_personalization.py` (LLM-as-judge to validate message accuracy)
+- Script: `execution/personalize_and_upload.py` (Complete flow: ICP → Personalize → Validate → Upload)
 - Script: `execution/add_leads_to_heyreach.py` (add leads to existing HeyReach campaign - RECOMMENDED)
 - Script: `execution/linkedin_outreach_heyreach.py` (legacy: creates new campaigns via API)
 - Script: `execution/linkedin_outreach_phantombuster.py` (alternative: send via PhantomBuster)
-- Dependencies: OpenAI API key (ChatGPT 5.2), HeyReach or PhantomBuster API key
+- Dependencies: DeepSeek API key, HeyReach or PhantomBuster API key
 
 ## HeyReach API Details
 
@@ -89,8 +91,34 @@ See you're in Miami. Just been to Fort Lauderdale in the US - and I mean the air
 
 **Performance:**
 - ~100 leads in 3-4 minutes
-- Cost: ~$0.02-0.03 per message (ChatGPT 5.2)
+- Cost: ~$0.02-0.03 per message (DeepSeek)
 - Quality: High (follows strict template rules, avoids AI slop)
+
+### Step 1.5: Validate Personalization (RECOMMENDED)
+
+After generating messages, validate accuracy using LLM-as-judge:
+
+```bash
+python3 execution/validate_personalization.py \
+  .tmp/personalized_leads.json \
+  --sample 20
+```
+
+**What it does:**
+1. Scores each message (1-5) on:
+   - Service accuracy (does "[service]" match what they do?)
+   - Method accuracy (is "[method]" realistic?)
+   - Authority relevance (does authority statement apply?)
+2. Flags messages as PASS/REVIEW/FAIL
+3. Auto-regenerates REVIEW/FAIL messages with correction feedback
+4. Outputs validation report
+
+**Flags:**
+- PASS (avg >= 4.0): Accurate, ready to send
+- REVIEW (avg >= 2.5): Borderline, auto-regenerated
+- FAIL (avg < 2.5): Wrong service/industry, auto-regenerated
+
+**Why this matters:** Without validation, ~15-20% of messages mischaracterize what the prospect actually does, leading to awkward replies like "We don't do executive search..."
 
 ### Step 2: Prepare Message Template
 

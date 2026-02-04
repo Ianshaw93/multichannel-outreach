@@ -4,15 +4,25 @@ Find leads by scraping engagers from competitor LinkedIn posts and adding them t
 
 ## Overview
 
-**Flow:**
+**Flow (13 steps):**
 1. Search Google for LinkedIn posts (e.g., "CEOs", "founders")
 2. Filter posts with 50+ reactions
 3. Scrape post engagers (who liked/commented)
-4. Scrape LinkedIn profiles of engagers (via Apify)
-5. Filter for US/Canada prospects
-6. ICP qualification (DeepSeek)
-7. Generate personalized 5-line LinkedIn DMs (DeepSeek)
-8. Upload to HeyReach with personalized messages
+4. **Headline pre-filter** - reject non-English + clear non-ICP (saves profile scrape costs)
+5. Aggregate profile URLs
+6. **Early dedup** - check against `processed_leads.json` tracking file
+7. Scrape LinkedIn profiles (via Apify) - only unprocessed URLs
+8. Filter for US/Canada prospects
+9. Filter incomplete profiles
+10. ICP qualification (DeepSeek)
+11. Generate personalized 5-line LinkedIn DMs (DeepSeek)
+12. **Validate messages** - LLM-as-judge scores accuracy, auto-fixes flagged messages
+13. Upload to HeyReach + update tracking file
+
+**Cost optimizations:**
+- Steps 4 and 6 run BEFORE expensive profile scraping (~$0.025/profile)
+- Language detection rejects non-English headlines (likely non-US/Canada)
+- Duplicate tracking prevents re-scraping previously processed leads
 
 **Based on:** n8n workflow "Competitor's post flow -> add connection"
 
@@ -76,6 +86,7 @@ python execution/competitor_post_pipeline.py \
 | `--countries` | `["United States", "Canada"]` | Allowed countries |
 | `--list_id` | `480247` | HeyReach list ID |
 | `--dry_run` | `False` | Skip HeyReach upload |
+| `--skip_validation` | `False` | Skip message validation/auto-fix |
 
 ## Pipeline Steps
 
@@ -103,9 +114,47 @@ Filters posts to keep only those with 50+ reactions (configurable).
 
 Uses Apify to get all users who reacted to the filtered posts.
 
-**Output:** List of profile URLs from reactors.
+**Output:** List of engager data including profile URLs and headlines.
 
-### Step 4: Scrape LinkedIn Profiles
+### Step 4: Headline Pre-Filter (Cost Optimization)
+
+Filters engagers by headline BEFORE the expensive profile scrape to reduce Apify costs.
+
+**Two-stage filter:**
+1. **Language detection** - rejects non-English headlines (likely non-US/Canada)
+2. **Keyword rejection** - rejects clear non-ICP roles
+
+**Language detection:**
+- High non-ASCII ratio (>15%) → rejected
+- CJK characters (Chinese/Japanese/Korean) → rejected
+- Cyrillic characters (Russian) → rejected
+- Arabic characters → rejected
+- Common non-English words (diretor, gerente, fundador, directeur, geschäftsführer, etc.) → rejected
+
+**Keyword rejection:** intern, student, trainee, cashier, driver, technician, nurse, teacher, professor, doctor, retired, unemployed, "looking for", "seeking", "open to work"
+
+**Estimated savings:** ~$0.025 per rejected engager (profile scrape cost avoided)
+
+### Step 5: Aggregate Profile URLs
+
+Collects and deduplicates profile URLs from engagers.
+
+### Step 6: Early Duplicate Check (Cost Optimization)
+
+Checks profile URLs against `processed_leads.json` tracking file BEFORE expensive profile scraping.
+
+**How it works:**
+- Loads tracking file with all previously uploaded leads
+- Filters out URLs that have already been processed
+- Logs removed duplicates and estimated savings
+
+**Tracking file:** `.tmp/processed_leads.json`
+- Updated automatically after each successful HeyReach upload
+- Contains normalized LinkedIn URLs mapped to metadata (name, date, source, list_id)
+
+**Estimated savings:** ~$0.025 per duplicate removed
+
+### Step 7: Scrape LinkedIn Profiles
 
 Scrapes full profile data for each engager using Apify.
 
@@ -118,7 +167,7 @@ Scrapes full profile data for each engager using Apify.
 - `addressCountryOnly`, `addressWithCountry`
 - `email`, `linkedinUrl`, `about`
 
-### Step 5: Location Filter
+### Step 8: Location Filter
 
 Filters profiles to keep only US and Canada prospects.
 
@@ -128,7 +177,17 @@ Filters profiles to keep only US and Canada prospects.
 - `USA`
 - `America`
 
-### Step 6: ICP Qualification (DeepSeek)
+### Step 9: Incomplete Profile Filter
+
+Filters out profiles that are too sparse to evaluate.
+
+**Required fields:**
+- Headline OR (jobTitle AND companyName)
+- At least one experience entry
+
+Profiles missing these fields are rejected to avoid wasting ICP/personalization API calls.
+
+### Step 10: ICP Qualification (DeepSeek)
 
 Uses DeepSeek AI to qualify leads based on ICP criteria.
 
@@ -144,7 +203,7 @@ Uses DeepSeek AI to qualify leads based on ICP criteria.
 - Traditional banking (Santander, Getnet, etc.)
 - Physical labor/retail roles
 
-### Step 7: Personalization (DeepSeek)
+### Step 11: Personalization (DeepSeek)
 
 Generates 5-line personalized LinkedIn DMs using DeepSeek.
 
@@ -162,11 +221,36 @@ You guys do [service] right? Do that w [method]? Or what
 See you're in [city]. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland
 ```
 
-### Step 8: HeyReach Upload
+### Step 12: Validation (LLM-as-Judge)
 
-Uploads qualified leads to HeyReach with personalized messages.
+Uses DeepSeek to validate that personalized messages accurately reflect the prospect's actual service/industry.
+
+**Scoring (1-5 scale):**
+- **Service accuracy** - Does "[service]" match what they actually do?
+- **Method accuracy** - Is "[method]" realistic for that service?
+- **Authority relevance** - Does the authority statement apply to their industry?
+
+**Flags:**
+- PASS: avg_score >= 4.0 (uploaded)
+- REVIEW: avg_score >= 2.5 < 4.0 (auto-regenerated with correction feedback)
+- FAIL: avg_score < 2.5 (auto-regenerated with correction feedback)
+
+Flagged messages are regenerated with correction feedback:
+```
+You said they do: "{inferred_service}"
+They ACTUALLY do: "{actual_service}"
+Problem: {reason}
+```
+
+### Step 13: HeyReach Upload + Tracking Update
+
+Uploads qualified leads to HeyReach with personalized messages and updates the tracking file.
 
 **Custom field:** `personalized_message`
+
+**After upload:**
+- Updates `.tmp/processed_leads.json` with all uploaded leads
+- Future runs will skip these leads in Step 6 (early dedup)
 
 ## Output
 
@@ -253,17 +337,20 @@ Saved to `.tmp/competitor_post_leads_{timestamp}.json`:
 ]
 ```
 
-## Cost Breakdown (per 100 leads)
+## Cost Breakdown (per 100 qualified leads)
 
-| Step | API | Est. Cost |
-|------|-----|-----------|
-| Google Search | Apify | ~$0.10 |
-| Post Engagers | Apify | ~$0.50 |
-| Profile Scraper | Apify | ~$2.00 |
-| ICP Check | DeepSeek | ~$0.01 |
-| Personalization | DeepSeek | ~$0.05 |
-| HeyReach Upload | Free | $0 |
-| **Total** | | **~$2.66** |
+| Step | API | Est. Cost | Notes |
+|------|-----|-----------|-------|
+| Google Search | Apify | ~$0.10 | |
+| Post Engagers | Apify | ~$0.50 | |
+| **Headline Pre-Filter** | None | **-$X.XX** | Saves ~$0.025 per rejected engager |
+| Profile Scraper | Apify | ~$2.00 | Only scrapes pre-filtered leads |
+| ICP Check | DeepSeek | ~$0.01 | |
+| Personalization | DeepSeek | ~$0.05 | |
+| HeyReach Upload | Free | $0 | |
+| **Total** | | **~$2.66** | Lower with headline pre-filter |
+
+**Cost optimization:** The headline pre-filter (Step 4) reduces profile scraping costs by rejecting clear non-ICP engagers before the expensive Apify profile scrape. Savings depend on engager quality but typically 20-40% reduction in profile scrape costs.
 
 ## Testing
 

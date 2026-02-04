@@ -46,6 +46,26 @@ Rules:
 ● Infer [method] based on common methods for that service
 ● Keep it casual and conversational
 ● Use "w" instead of "with"
+  ● CRITICAL: If 
+  headline/company        
+  description are empty or   unavailable:
+    - First check the     
+  company name itself     
+  (e.g., "Dean's Kid      
+  Fashion" → "kid
+  fashion")
+    - Then check the      
+  industry field if       
+  available
+    - Then use their job  
+  title as the service    
+  (e.g., "CFO" → "finance 
+  leadership")
+    - NEVER default to    
+  "corporate comms" or    
+  "communications
+  strategy" - this is     
+  almost always wrong     
 
 Examples:
 ● You guys do paid ads right? Do that w Google + Meta? Or what

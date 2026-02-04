@@ -1,0 +1,296 @@
+[
+  {
+    "fullName": "🫱🏼‍🫲🏽Leighton Poley",
+    "firstName": "🫱🏼‍🫲🏽Leighton",
+    "companyName": "In-Telecom",
+    "jobTitle": "Director of Project Operations",
+    "headline": "Director of Project Operations | MSP💻☁️ | Voice📠📱 | Security🔒🛡️",
+    "companyIndustry": "IT Services and IT Consulting",
+    "about": null,
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAAnoOEQBzZi-0wDYsTkZGMS7RfEmG1Jwwr0",
+    "personalized_message": "Hey Leighton\n\nIn-Telecom looks interesting\n\nYou guys do managed IT services right? Do that w remote monitoring + cloud migration? Or what\n\nMSP work is so valuable\nOften comes down to proactive support to protect client revenue.\n\nSee you're in Fort Worth. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "communications strategy with executive leadership and corporate comms",
+      "actual_service": "unknown, but likely related to financial analysis, regulatory research/advocacy, and tech trends for business strategy (based on summary)",
+      "reason": "The message assumes PhireLink does corporate communications strategy, but the input data describes a leader focused on financial analysis, regulatory advocacy, and tech trends for business strategy. This is a significant mischaracterization."
+    }
+  },
+  {
+    "fullName": "Colleen R. Angerdina, CPA",
+    "firstName": "Colleen R.",
+    "companyName": "Colleen R. Angerdina, CPA, LLC",
+    "jobTitle": "Owner",
+    "headline": "Owner at Colleen R. Angerdina, CPA, LLC",
+    "companyIndustry": null,
+    "about": null,
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAAOW36YBxr3ZSFhGIDRGSdw9Qv3AqM-Ph0E",
+    "personalized_message": "Hey Colleen\n\nCRAC looks interesting\n\nYou guys do accounting right? Do that w tax strategy + advisory? Or what\n\nAccounting is so powerful\nReally comes down to proactive planning to protect margins and scale.\n\nSee you're in Madisonville. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 3,
+      "avg_score": 1.7,
+      "inferred_service": "comms strategy for executive leadership and media events",
+      "actual_service": "solving tech problems for small and medium businesses (IT Services and IT Consulting)",
+      "reason": "The message incorrectly infers the company provides corporate communications services, which is a complete mischaracterization of their actual IT services business. The authority statement about branding is only adjacent to any business."
+    }
+  },
+  {
+    "fullName": "Julie Collier-Erickson, MBA",
+    "firstName": "Julie",
+    "companyName": "In-Telecom",
+    "jobTitle": "Director of Marketing",
+    "headline": "Senior Marketing Leader | Go-to-Market Strategy & Demand Generation | Building Scalable Marketing Functions",
+    "companyIndustry": "IT Services and IT Consulting",
+    "about": "Senior marketing leader with 15+ years of experience supporting go-to-market strategy, demand generation, and brand development across B2B, B2C, and multi-brand organizations. Known for a steady, structured approach to building marketing functions that align with business priorities and support sustainable growth through cross-functional collaboration and disciplined execution.\n\nCore Skills\nGo-to-Market Strategy · Demand Generation · Revenue-Aligned Marketing · Marketing Operations · Lifecycle & Retention Strategy · Pipeline & CRM Strategy · Team Leadership · Cross-Functional Collaboration · Executive Communication",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAA6iGRcBQJM5X_wgKGWSWF07rKU3QFIYnP0",
+    "personalized_message": "Hey Julie\n\nIn-Telecom looks interesting\n\nYou guys do demand gen right? Do that w content + paid ads? Or what\n\nDemand gen is a tough nut to crack\nReally comes down to precise targeting + personalisation to book clients at a high level.\n\nSee you're in Slidell. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 3,
+      "avg_score": 1.7,
+      "inferred_service": "executive comms / corporate comms",
+      "actual_service": "re-inventing backup for MSPs (data backup technology)",
+      "reason": "The message incorrectly claims Slide does executive/corporate communications. The actual business is data backup technology for MSPs, a complete mischaracterization."
+    }
+  },
+  {
+    "fullName": "Andy Whisenant",
+    "firstName": "Andy",
+    "companyName": "Rev.io",
+    "jobTitle": "Senior Account Executive",
+    "headline": "Senior Account Executive at Rev.io",
+    "companyIndustry": "Software Development",
+    "about": null,
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAADpjBJEBwQsKsS3lZk4GfytvBFMOPnRyRfA",
+    "personalized_message": "Hey Andy\n\nRev.io looks interesting\n\nYou guys do communications strategy right? Do that w executive positioning + media relations? Or what\n\nCorporate comms is so powerful\nReally comes down to building a narrative that protects reputation and drives revenue.\n\nSee you're in Atlanta. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "communications strategy, executive positioning, media relations",
+      "actual_service": "Software Development (likely billing/rev management software)",
+      "reason": "The message completely mischaracterizes Rev.io as a corporate communications/PR firm, while the data indicates it is a Software Development company. The service, method, and authority statement are all irrelevant to the actual industry."
+    }
+  },
+  {
+    "fullName": "Russell Gentry",
+    "firstName": "Russell",
+    "companyName": "M1 Data & Analytics",
+    "jobTitle": "CEO / Partner",
+    "headline": "CEO / Partner @ M1 Data & Analytics | Forbes Technology Council |\nData solutions and technology for brands and agencies to build custom audiences that increases engagement.",
+    "companyIndustry": "Information Technology & Services",
+    "about": "I am a data and technology leader with over 20 years of experience in creating innovative data solutions and platforms for brands and agencies. As the CEO and Partner of M1 Data & Analytics, I lead a team that invented the patent pending SmartPiXL, which turns anonymous website visitors into visible prospects without relying on cookies or IP matching. We have also developed and launched other products, such as Traffic Alerts and LocationIQ, that leverage data science, analytics, and machine learning to enhance consumer engagement and retention.\n\nMy passion for data and technology stems from my early career in the automotive industry, where I founded and sold four data solutions companies that generated over $25 million in annual sales. I have also worked with industry leaders, such as Marcus Lemonis of CNBC's The Profit, and Credit Acceptance, where I helped them improve their data strategies and consumer experiences. I am always looking for new challenges and opportunities to apply my skills and knowledge to solve real-world problems and create value for my clients and partners.",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAAEnS7wBrKQDFfYwKkRbpmJni7Nobc-q6gA",
+    "personalized_message": "Hey Russell\n\nMDA looks interesting\n\nYou guys do data solutions right? Do that w custom audiences + analytics? Or what\n\nData solutions are so valuable\nWithout proper analytics you're literally leaving revenue on the table.\n\nSee you're in Fort Lauderdale. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 3,
+      "method_score": 3,
+      "authority_score": 1,
+      "avg_score": 2.3,
+      "inferred_service": "cost recovery via software audits and contract negotiation",
+      "actual_service": "helping companies find money/cash flow, optimize Microsoft/software licensing costs, and provide pay-for-performance cost savings",
+      "reason": "The authority statement ('Cost recovery is so valuable Without it you're literally leaving revenue on the table.') is generic and not specific to their industry or service, scoring low. The service and method are in the right ballpark but imprecise."
+    }
+  },
+  {
+    "fullName": "Frank Nazario, CPA, CGMA 🛡️",
+    "firstName": "Frank",
+    "companyName": "In-Telecom",
+    "jobTitle": "Chief Financial Officer",
+    "headline": "Chief Financial Officer at In-Telecom",
+    "companyIndustry": "IT Services and IT Consulting",
+    "about": "Accomplished Chief Financial Officer (CFO) and CPA with a progressive career spanning managed IT services, wholesale distribution, oilfield midstream, and logistics. Recognized for leading financial transformation, streamlining reporting and accounting systems, and serving as a trusted advisor to executives, boards, and private equity stakeholders. I bring a track record of aligning finance strategy with business objectives to unlock growth, improve profitability, and strengthen organizational resilience.\n\nI specialize in redesigning financial processes, implementing scalable systems, and embedding risk management and compliance frameworks that enable organizations to operate with clarity and control. By translating complex financial data into actionable insights, I help leadership teams make confident, high-impact decisions. My passion lies in building sustainable financial disciplines, fostering continuous improvement, and guiding companies through periods of rapid change and transformation.\n\nSelected Achievements:\n\nDirected the successful integration of a $310M acquisition into Pilot Water Solutions LLC, completed on schedule and audit-ready for a Big 4 firm.\n\nOversaw independent valuations for nine entities, ensuring accuracy and alignment with organizational and investor expectations.\n\nNegotiated the strategic sale of Produced Water Transfer LLC, eliminating costly private equity debt while delivering a strong exit and ROI for investors.\n\nCore Strengths:\n\nFinance Strategy & Leadership | M&A & Purchase Accounting | Private Equity Partnership | Financial Reporting & Analysis | Budgeting & Forecasting | Cash Flow Optimization | Audit & Big 4 Engagement | Risk & Compliance | Entity Integration | Systems Conversions | Corporate Finance | US GAAP",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAATZEMsBhaT5fcA3X-e6CqLc0WLH5BJWXt8",
+    "personalized_message": "Hey Frank\n\nIn-Telecom looks interesting\n\nYou guys do corporate comms right? Do that w executive leadership + media strategy? Or what\n\nExecutive comms is so powerful\nOften comes down to building a narrative that protects reputation and drives revenue.\n\nSee you're in Greater New Orleans Region. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "corporate comms, executive leadership + media strategy",
+      "actual_service": "IT Services and IT Consulting, managed IT services, financial leadership",
+      "reason": "The message incorrectly assumes the company provides corporate communications/media strategy services. The INPUT DATA shows the company is in IT Services and IT Consulting, and the person is a CFO focused on finance, M&A, and systems, not communications."
+    }
+  },
+  {
+    "fullName": "Marissa Withers",
+    "firstName": "Marissa",
+    "companyName": "SV Executive Search",
+    "jobTitle": "Managing Partner",
+    "headline": "MSP Executive Search Partner | Builder of High-Impact Leadership Teams | Talent Advisor",
+    "companyIndustry": "Staffing and Recruiting",
+    "about": "Trusted Executive Search & HR Leader with deep experience designing and executing high-impact Talent Acquisition and People strategies. I bring a proven track record of building and leading HR functions in the MSP space—growing an organization from a founder-led, privately held business to a private equity-backed enterprise with a strong M&A and transaction focus.\n\nThis journey has fueled a fulfilling shift into Executive Search, where I’m now focused on leading seamless, high-touch CXO and VP-level searches across the MSP and IT services landscape.\n\nSpecialties: \nExecutive Search | Talent Strategy | MSP & IT Services | Private Equity | Succession Planning | M&A Integration | Strategic Workforce Planning | Organizational Design | Culture & Vision Development | Leadership Coaching | Total Rewards | Talent Development | Employee Engagement | Change Management | Cross-Functional Collaboration | Human-Centric Leadership",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAABSIuMB-2K015Gy0Cd6BmF943vAYJg18gY",
+    "personalized_message": "Hey Marissa\n\nSES looks interesting\n\nYou guys do executive search right? Do that w retained + contingency? Or what\n\nExecutive search is so powerful\nOften comes down to having a brand/offer that’s truly different.\n\nSee you're in United States. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "communications strategy",
+      "actual_service": "technology engineering, telecom/carrier infrastructure design, operations leadership",
+      "reason": "The message incorrectly infers the company does corporate communications strategy. The actual role and company are in telecom infrastructure and technology operations for the utilities industry."
+    }
+  },
+  {
+    "fullName": "James Clarke",
+    "firstName": "James",
+    "companyName": "TPx",
+    "jobTitle": "Sales Account Executive",
+    "headline": "Sales Account Executive focused on teamwork and client satisfaction.",
+    "companyIndustry": "IT Services and IT Consulting",
+    "about": "As an Inside Sales Representative at TPx for over 4.5 years, I focus on leading sales initiatives for managed IT and communication solutions. My role includes collaborating with engineering teams to design secure, scalable networking and endpoint management solutions. Additionally, I provide project management and post-sales customer support to ensure successful implementations and client satisfaction.  \n\nBy leveraging teamwork and a consultative selling approach, I help drive client modernization and compliance while contributing to revenue growth and customer retention. My efforts have been recognized with top conversion rates and exceptional retention scores. My mission is to deliver innovative, scalable solutions that empower businesses to enhance security and efficiency.",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAADFEnFAB-GnAXjNkCeauOaGzeSK5p-HhARo",
+    "personalized_message": "Hey James\n\nTPx looks interesting\n\nYou guys do comms strategy right? Do that w executive leadership + media? Or what\n\nCorporate comms is so powerful\nOften comes down to having a brand/offer that’s truly different.\n\nSee you're in Deltona. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 3,
+      "avg_score": 1.7,
+      "inferred_service": "comms strategy with executive leadership and media",
+      "actual_service": "managed IT and communication solutions, secure/scalable networking, endpoint management",
+      "reason": "The message asks about corporate communications/PR strategy, which is a complete mischaracterization of TPx's IT services and consulting business. The method (executive leadership + media) is irrelevant to their actual sales and engineering work."
+    }
+  },
+  {
+    "fullName": "Banda Khalifa MD, MPH, MBA",
+    "firstName": "Banda",
+    "companyName": "World Health Organization",
+    "jobTitle": "Technical Advisory : Emergency Preparedness & Response",
+    "headline": "WHO Advisor | Physician-Scientist  | Global Health Leader | RWE & Access | External Scientific Engagement & Evidence Translation | PhD Candidate (Epidemiology), Johns Hopkins",
+    "companyIndustry": "International Affairs",
+    "about": "Physician-epidemiologist and global health strategist with over a decade of experience bridging data, policy, and execution. Trained at Johns Hopkins (PhD, MPH, MBA), with advisory roles at WHO, Africa CDC, and the Tony Blair Institute and with African governments. \n\nMy work focuses on translating science into impact through strategy, systems leadership, and health innovation.I have successfully led high-impact global initiatives in vaccine policy, drug safety, and pandemic preparedness, advising international organizations and various governmental and health-sector stakeholders. \n\nMy leadership bridges the gap between epidemiological insights, public health strategy, and industry-driven health solutions.\n\nCore Areas of Expertise:\n\n1. Global Health Security & Strategy – Advising global institutions on disease prevention, emergency preparedness, outbreak response, and strategic health policy implementation.\n\n2. Pharmacoepidemiology & Real-World Evidence (RWE) – Leading studies on vaccine effectiveness, drug safety surveillance, and regulatory science to inform public health policy and clinical practice.\n\n3. Health Systems Strengthening – Developing sustainable interventions and robust healthcare frameworks in collaboration with global stakeholders to ensure preparedness and resilient health systems.\n\n4. AI & Data-Driven Health Innovation – Utilizing advanced analytics and artificial intelligence to translate complex epidemiological and clinical data into actionable health solutions.\n\n5. Multisector Leadership & Collaboration – Managing diverse international teams and cultivating strategic partnerships across academia, industry, governments, and NGOs to drive impactful global health outcomes.\n\nI am passionate about leadership roles where I can shape global health strategy while also supporting the next generation of leaders. \n\nI want to leverage my experience in epidemiology, policy, and multisector partnerships to help foundations and institutions make smarter investments, strengthen health systems, and translate science into long-term impact.",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAACUPKcMBbCk3ooBLo_wg9JnNzJjJWaDBs7s",
+    "personalized_message": "Hey Banda\n\nWHO looks interesting\n\nYou guys do evidence translation right? Do that w RWE + policy? Or what\n\nGlobal health strategy is so powerful\nOften comes down to translating evidence into action that saves lives.\n\nSee you're in United States. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "corporate communications",
+      "actual_service": "health consulting, strategic advisory, regulatory affairs, public health, laboratory science",
+      "reason": "The message completely mischaracterizes the company's services. The person is a public health and regulatory affairs professional in health innovation, not a corporate communications firm. The authority statement is about corporate reputation, not health equity or regulatory governance."
+    }
+  },
+  {
+    "fullName": "Cheri Sweigard",
+    "firstName": "Cheri",
+    "companyName": "Sweigard Associates",
+    "jobTitle": "Principal",
+    "headline": "Health Informatics Program Director, PMP",
+    "companyIndustry": null,
+    "about": "I am a results oriented Executive Consultant working with Clinical and Research Organizations to effect healthcare reform by integrating and analyzing data to effect change.  I am utilizing, as the program manager and the lead architect, the lessons learned from years working with other industries (retail, industrial and social services) that transformed themselves in a large part by integrating and analyzing data throughout the entire organization. Healthcare costs is the most important issue we all face in today’s market.  The healthcare industry is facing great challenges to effectively integrate great quantifies of operational data to increase the speed and accuracy of research and to improve the quality of clinical care while decreasing the cost of delivery.  My success in delivering informatics systems that provide real long lasting business value is my commitment to solving the customer’s problem with pragmatic, quality solutions.\n\nSpecialties: \nHealthcare Informatics Roadmaps, Architecture, and Implementation\nArchitecting Data Governance Solutions \nManaging the implementations of Enterprise Data Warehouse, BI Solutions, Metadata Repositories",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAABeDl4BRQpWaLTZMpXd9cw7rW6-i3zCH6w",
+    "personalized_message": "Hey Cheri\n\nSweigard Associates looks interesting\n\nYou guys do comms strategy right? Do that w executive leadership + crisis management? Or what\n\nCorporate comms is so powerful\nOften comes down to having a narrative that truly protects and grows the business.\n\nSee you're in Gaithersburg. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "comms strategy, executive leadership + crisis management",
+      "actual_service": "Healthcare informatics, data governance, enterprise data warehousing, BI solutions, clinical/research data integration",
+      "reason": "The message completely mischaracterizes the recipient's business as corporate communications/crisis management, which is unrelated to their actual work in health informatics and data architecture."
+    }
+  },
+  {
+    "fullName": "Leon Ofchus",
+    "firstName": "Leon",
+    "companyName": null,
+    "jobTitle": null,
+    "headline": "--",
+    "companyIndustry": null,
+    "about": null,
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAACCDREEBl--UMzbi6WNWhAxC-1hBU34ct38",
+    "personalized_message": "Hey Leon\n\nYour work looks interesting\n\nYou guys do corporate comms right? Do that w media + events? Or what\n\nStrong positioning is so powerful\nOften comes down to having an offer that’s truly different.\n\nSee you're in the US. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "corporate comms",
+      "actual_service": "unknown",
+      "reason": "No data is available about the person's company, services, or industry. The message makes a specific, unverified claim about their business ('corporate comms'), which cannot be validated."
+    }
+  },
+  {
+    "fullName": "Steven Labrenz",
+    "firstName": "Steven",
+    "companyName": "Crux Subsurface, Inc.",
+    "jobTitle": "Director of Marketing, Communications & Public Affairs– Crux Subsurface (Quanta Services, NYSE: PWR)",
+    "headline": "Strategic Marketing & Communications Director | Brand, Digital Engagement & Cross‑Functional Leadership | S&P 500 Experience",
+    "companyIndustry": "Construction",
+    "about": "I’m a strategic marketing and communications leader with a career built around shaping narratives, strengthening stakeholder trust, and advancing organizational priorities through clear, audience‑focused communication. My work spans integrated marketing, digital ecosystem management, public‑facing communications, and high‑stakes engagement with government, regulatory, and community partners.\n\nAcross roles in marketing, business development, and strategic leadership, I’ve led initiatives that translate complex, technical information into compelling stories for diverse audiences. I’ve directed national campaigns, supported executive communications, and partnered with senior leaders to align brand, messaging, and mission across channels.\n\nMy background includes managing multimillion‑dollar programs for Fortune 500 organizations, advising executives, and leading cross‑functional teams through issues management, public engagement, and high‑visibility initiatives. I’ve worked extensively with federal agencies, state and local governments, and regulated industries — experience that has strengthened my commitment to transparency, accountability, and mission‑driven communication.\n\nMost recently, as Director of Marketing, Communications & Public Affairs at Crux Subsurface (Quanta Services, NYSE: PWR), I partnered with executive leadership to develop integrated messaging, strengthen client and community engagement, and support communications for one of the company’s largest infrastructure programs. My focus has consistently been on building credibility, shaping public understanding, and ensuring complex information is communicated clearly and responsibly.\n\nI bring a strategic, collaborative, and mission‑aligned approach to marketing and communications — grounded in the belief that effective storytelling strengthens trust, informs communities, and drives meaningful impact.",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAAMwDEcBGFXDgAIEWmMWA9k8MaDD69_Xmj4",
+    "personalized_message": "Hey Steven\n\nCrux looks interesting\n\nYou guys do strategic comms right? Do that w executive leadership + media events? Or what\n\nCorporate comms is so powerful\nOften comes down to having a narrative that truly drives reputation and revenue.\n\nSee you're in St Paul. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "comms strategy",
+      "actual_service": "community engagement, business development, strategic partnerships, project/event planning, fundraising, volunteer recruitment, waterless beauty",
+      "reason": "The message incorrectly infers the company does corporate communications strategy. The data shows the person is a founder focused on community projects, events, and partnerships, not corporate comms for executives/media."
+    }
+  },
+  {
+    "fullName": "Bruce K Lee",
+    "firstName": "Bruce K",
+    "companyName": "Keebeck Wealth Management",
+    "jobTitle": "Founder and CEO, Wealth Advisor",
+    "headline": "Founder and CEO,  Keebeck Wealth Management",
+    "companyIndustry": "Financial Services",
+    "about": "Over 30 years of experience advising clients through volitile environments up and down. Experience matters.",
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAACfj9O8BmHo8CE7Lw3hmspJzNmiN1Ru9CdI",
+    "personalized_message": "Hey Bruce\n\nKWM looks interesting\n\nYou guys do wealth management right? Do that w financial planning + investment strategy? Or what\n\nWealth management is so powerful\nReally comes down to aligning strategy with client goals to preserve and grow capital.\n\nSee you're in Chicago. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "executive comms, narrative building, media strategy",
+      "actual_service": "ghostwriting, book coaching, editing, and strategic publishing support for thought leaders, coaches, and consultants",
+      "reason": "The message asks about corporate/executive communications, which is a complete mischaracterization of her ghostwriting and book creation services for individual experts. The authority statement about corporate narrative is irrelevant to her industry."
+    }
+  },
+  {
+    "fullName": "Eunice Dean",
+    "firstName": "Eunice",
+    "companyName": "Dean's Kid Fashion",
+    "jobTitle": "owner",
+    "headline": "owner",
+    "companyIndustry": null,
+    "about": null,
+    "linkedinUrl": "https://www.linkedin.com/in/ACoAAAuAmrwBpGbtBDB0zZfHJs6LCkQRCFR8t-g",
+    "personalized_message": "Hey Eunice\n\nDKF looks interesting\n\nYou guys do corporate comms right? Do that w strategy + media? Or what\n\nCorporate comms is so powerful\nReally comes down to building a narrative that drives reputation and revenue.\n\nSee you're in Houston. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland",
+    "validation": {
+      "flag": "FAIL",
+      "service_score": 1,
+      "method_score": 1,
+      "authority_score": 1,
+      "avg_score": 1.0,
+      "inferred_service": "corporate communications",
+      "actual_service": "kid fashion (likely children's clothing retail/manufacturing)",
+      "reason": "The message assumes the company provides corporate communications services, but the company name 'Dean's Kid Fashion' strongly indicates it is a children's clothing business. The authority statement about corporate comms is irrelevant to this industry."
+    }
+  }
+]

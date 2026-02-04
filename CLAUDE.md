@@ -1,5 +1,15 @@
 # Agent Instructions
 
+## Related Projects
+
+This is part of a 3-project prospecting/outreach system:
+
+| Project | Path | Purpose |
+|---------|------|---------|
+| **speed_to_lead** | `C:\Users\IanShaw\localProgramming\smiths\speed_to_lead` | Prospecting & lead tracking |
+| **multichannel-outreach** | `C:\Users\IanShaw\localProgramming\smiths\multichannel-outreach` | Messaging & outreach automation |
+| **contentCreator** | `C:\Users\IanShaw\localProgramming\smiths\contentCreator` | Content generation |
+
 > This file is mirrored across CLAUDE.md, AGENTS.md, and GEMINI.md so the same instructions load in any AI environment.
 
 You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.

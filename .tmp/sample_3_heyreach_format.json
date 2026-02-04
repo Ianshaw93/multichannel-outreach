@@ -1,0 +1,45 @@
+[
+  {
+    "firstName": "Rod",
+    "lastName": "Andes",
+    "profileUrl": "https://www.linkedin.com/in/ACoAAAIzPGgBJFqduIi5Ko5AlVkW8jRC5woCYNA",
+    "customUserFields": [
+      {
+        "name": "personalized_message",
+        "value": "Hey Rod\n\nDQI Academy looks interesting\n\nYou guys do cybersecurity right? Do that w risk assessments + compliance? Or what\n\nCybersecurity is a must\nWithout proper controls you're literally leaving revenue on the table.\n\nSee you're in Nashville. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland"
+      }
+    ],
+    "companyName": "DQI Academy",
+    "position": "Founder",
+    "emailAddress": "rodandes@msn.com",
+    "location": "Nashville Metropolitan Area"
+  },
+  {
+    "firstName": "Tiary",
+    "lastName": "RANAIVO",
+    "profileUrl": "https://www.linkedin.com/in/ACoAABsjXeoBOQdX8mjURh8eY0YY67fj0JIriZQ",
+    "customUserFields": [
+      {
+        "name": "personalized_message",
+        "value": "Hey Tiary\n\nBBE looks interesting\n\nYou guys do food & beverage consulting right? Do that w cost control + data optimization? Or what\n\nFood and beverage consulting is so powerful\nOften comes down to precise cost control and data to protect margins.\n\nSee you're in St. Catharines. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland"
+      }
+    ],
+    "companyName": "Bleu Beats Events",
+    "position": "Food and Beverage Manager",
+    "location": "St. Catharines, Ontario"
+  },
+  {
+    "firstName": "Coach MJ",
+    "lastName": "Tolan",
+    "profileUrl": "https://www.linkedin.com/in/ACoAAALFMuMBSXBopjE_CpysVYe_IoP-EzS-P9A",
+    "customUserFields": [
+      {
+        "name": "personalized_message",
+        "value": "Hey Coach MJ\n\nCarrington Agency looks interesting\n\nYou guys do leadership development right? Do that w keynotes + coaching? Or what\n\nLeadership development is so powerful\nSuch a strong lever to pull.\n\nSee you're in Orlando. Just been to Fort Lauderdale in the US - and I mean the airport lol Have so many connections now that I need to visit for real. I'm in Glasgow, Scotland"
+      }
+    ],
+    "companyName": "Carrington Agency",
+    "position": "Co President",
+    "location": "Orlando, Florida"
+  }
+]

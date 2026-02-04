@@ -30,6 +30,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from dotenv import load_dotenv
 from prompts import get_linkedin_5_line_prompt
+from personalize_and_upload import validate_and_fix_batch
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
@@ -341,6 +342,239 @@ def deduplicate_profile_urls(urls: List[str]) -> List[str]:
     return unique
 
 
+def extract_post_date_from_url(post_url: str) -> Optional[datetime]:
+    """
+    Extract post date from LinkedIn activity ID in URL.
+    LinkedIn activity IDs encode timestamp in upper bits.
+    """
+    match = re.search(r'activity-(\d+)', post_url)
+    if not match:
+        return None
+    try:
+        activity_id = int(match.group(1))
+        timestamp_ms = activity_id >> 22
+        linkedin_epoch_ms = 1288834974657
+        actual_timestamp_ms = timestamp_ms + linkedin_epoch_ms
+        from datetime import timezone
+        return datetime.fromtimestamp(actual_timestamp_ms / 1000, tz=timezone.utc)
+    except Exception:
+        return None
+
+
+def build_engagement_context(engagers: List[Dict]) -> Dict[str, Dict]:
+    """
+    Build a mapping of profile_url -> engagement context.
+    Extracts reaction type, post URL, and post date for each engager.
+    """
+    context = {}
+    scrape_time = datetime.now()
+
+    for engager in engagers:
+        reactor = engager.get("reactor", {})
+        profile_url = reactor.get("profile_url", "")
+        if not profile_url:
+            continue
+
+        normalized_url = profile_url.lower().strip().rstrip("/")
+        if "?" in normalized_url:
+            normalized_url = normalized_url.split("?")[0]
+
+        metadata = engager.get("_metadata", {})
+        post_url = metadata.get("post_url") or engager.get("input", "")
+
+        context[normalized_url] = {
+            "engagement_type": engager.get("reaction_type", "LIKE"),
+            "source_post_url": post_url,
+            "post_date": extract_post_date_from_url(post_url),
+            "total_reactions": metadata.get("total_reactions"),
+            "scraped_at": scrape_time,
+        }
+
+    return context
+
+
+def enrich_profiles_with_engagement(profiles: List[Dict], engagement_context: Dict[str, Dict]) -> List[Dict]:
+    """Add engagement context to scraped profiles."""
+    for profile in profiles:
+        linkedin_url = profile.get("linkedinUrl") or profile.get("profileUrl") or ""
+        normalized_url = linkedin_url.lower().strip().rstrip("/")
+        if "?" in normalized_url:
+            normalized_url = normalized_url.split("?")[0]
+
+        engagement = engagement_context.get(normalized_url, {})
+        if engagement:
+            profile["engagement_type"] = engagement.get("engagement_type")
+            profile["source_post_url"] = engagement.get("source_post_url")
+            profile["post_date"] = engagement.get("post_date").isoformat() if engagement.get("post_date") else None
+            profile["scraped_at"] = engagement.get("scraped_at").isoformat() if engagement.get("scraped_at") else None
+
+    return profiles
+
+
+# =============================================================================
+# MODULE 2B: HEADLINE PRE-FILTER (Cost Optimization)
+# =============================================================================
+
+# Quick authority keywords for headline pre-filtering (subset of full ICP)
+HEADLINE_AUTHORITY_KEYWORDS = [
+    "ceo", "founder", "co-founder", "cofounder", "owner",
+    "president", "managing director", "partner",
+    "vp", "vice president", "director",
+    "cto", "cfo", "coo", "cmo", "chief",
+    "head of", "principal", "entrepreneur"
+]
+
+# Hard rejection keywords - definitely NOT ICP
+HEADLINE_REJECT_KEYWORDS = [
+    "intern", "student", "trainee", "apprentice",
+    "cashier", "driver", "technician", "mechanic",
+    "nurse", "teacher", "professor", "doctor", "physician",
+    "looking for", "seeking", "open to work",
+    "retired", "unemployed"
+]
+
+# Non-English indicators (words common in other languages)
+NON_ENGLISH_INDICATORS = [
+    # Portuguese
+    "diretor", "gerente", "fundador", "empresário", "sócio", "coordenador",
+    # Spanish
+    "director", "gerente", "fundador", "empresario", "socio", "coordinador",
+    # French
+    "directeur", "fondateur", "gérant", "président", "responsable",
+    # German
+    "geschäftsführer", "gründer", "leiter", "inhaber",
+    # Italian
+    "direttore", "fondatore", "titolare", "amministratore",
+    # Dutch
+    "directeur", "oprichter", "eigenaar",
+]
+
+
+def is_likely_english(text: str) -> tuple[bool, str]:
+    """
+    Check if text is likely English based on character analysis and word patterns.
+
+    Args:
+        text: Text to analyze (headline, name, etc.)
+
+    Returns:
+        Tuple of (is_english: bool, reason: str)
+    """
+    if not text or len(text) < 3:
+        return True, "too short to analyze"
+
+    # Check for high non-ASCII ratio (Chinese, Russian, Arabic, etc.)
+    non_ascii_chars = sum(1 for c in text if ord(c) > 127)
+    non_ascii_ratio = non_ascii_chars / len(text)
+
+    if non_ascii_ratio > 0.15:
+        return False, f"high non-ASCII ratio ({non_ascii_ratio:.0%})"
+
+    # Check for CJK characters (Chinese, Japanese, Korean)
+    cjk_count = sum(1 for c in text if '\u4e00' <= c <= '\u9fff' or '\u3040' <= c <= '\u30ff' or '\uac00' <= c <= '\ud7af')
+    if cjk_count > 0:
+        return False, "contains CJK characters"
+
+    # Check for Cyrillic (Russian, etc.)
+    cyrillic_count = sum(1 for c in text if '\u0400' <= c <= '\u04ff')
+    if cyrillic_count > 0:
+        return False, "contains Cyrillic characters"
+
+    # Check for Arabic
+    arabic_count = sum(1 for c in text if '\u0600' <= c <= '\u06ff')
+    if arabic_count > 0:
+        return False, "contains Arabic characters"
+
+    # Check for common non-English words
+    text_lower = text.lower()
+    for indicator in NON_ENGLISH_INDICATORS:
+        if indicator in text_lower:
+            return False, f"contains '{indicator}'"
+
+    return True, "appears English"
+
+
+def prefilter_engagers_by_headline(engagers: List[Dict]) -> tuple[List[Dict], int, int, int]:
+    """
+    Pre-filter engagers by headline BEFORE expensive profile scraping.
+
+    This saves ~$0.025 per filtered-out profile by avoiding unnecessary scrapes.
+    Uses a conservative approach: only reject clear non-ICP, keep uncertain ones.
+
+    Filters:
+    1. Non-English headlines (likely non-US/Canada)
+    2. Hard rejection keywords (intern, student, etc.)
+
+    Args:
+        engagers: List of engager dictionaries from post reactions scraper
+
+    Returns:
+        Tuple of (filtered_engagers, kept_count, rejected_count, non_english_count)
+    """
+    filtered = []
+    rejected_count = 0
+    non_english_count = 0
+    no_headline_count = 0
+
+    for engager in engagers:
+        reactor = engager.get("reactor", {})
+        headline_raw = (reactor.get("headline") or "").strip()
+        headline = headline_raw.lower()
+        name = reactor.get("name", "Unknown")
+
+        # No headline = keep (benefit of doubt, will filter later)
+        if not headline:
+            no_headline_count += 1
+            filtered.append(engager)
+            continue
+
+        # Check language first (non-English = likely non-US/Canada)
+        is_english, lang_reason = is_likely_english(headline_raw)
+        if not is_english:
+            non_english_count += 1
+            print(f"  [PRE-FILTER] Rejected (non-English): {name} - {lang_reason}")
+            continue
+
+        # Check for hard rejection keywords
+        is_rejected = False
+        reject_reason = ""
+        for keyword in HEADLINE_REJECT_KEYWORDS:
+            if keyword in headline:
+                is_rejected = True
+                reject_reason = keyword
+                break
+
+        if is_rejected:
+            rejected_count += 1
+            print(f"  [PRE-FILTER] Rejected: {name} - headline contains '{reject_reason}'")
+            continue
+
+        # Check for authority keywords (positive signal)
+        has_authority = any(kw in headline for kw in HEADLINE_AUTHORITY_KEYWORDS)
+
+        # If no authority keyword but not rejected, still keep (benefit of doubt)
+        # The full ICP check will filter more precisely later
+        filtered.append(engager)
+
+        if has_authority:
+            print(f"  [PRE-FILTER] Kept (authority): {name}")
+
+    kept_count = len(filtered)
+    total_rejected = rejected_count + non_english_count
+
+    print(f"\nHeadline pre-filter: {len(engagers)} -> {kept_count} engagers")
+    print(f"  Non-English rejected: {non_english_count}")
+    print(f"  Keyword rejected: {rejected_count}")
+    print(f"  No headline: {no_headline_count} (kept for benefit of doubt)")
+
+    # Calculate estimated savings
+    savings = total_rejected * APIFY_COSTS["profile_scraper"]
+    if savings > 0:
+        print(f"  Estimated savings: ${savings:.2f} (avoided {total_rejected} profile scrapes)")
+
+    return filtered, kept_count, rejected_count, non_english_count
+
+
 def scrape_post_engagers(post_urls: List[str]) -> List[Dict]:
     """
     Scrape engagers (reactions) from LinkedIn posts using Apify.
@@ -387,8 +621,132 @@ def scrape_post_engagers(post_urls: List[str]) -> List[Dict]:
 
 
 # =============================================================================
-# MODULE 3: LINKEDIN PROFILE SCRAPER
+# MODULE 3: LINKEDIN PROFILE SCRAPER (with caching)
 # =============================================================================
+
+PROFILE_CACHE_FILE = ".tmp/profile_cache.json"
+
+
+def load_profile_cache() -> Dict[str, Dict]:
+    """Load cached profiles from disk."""
+    if os.path.exists(PROFILE_CACHE_FILE):
+        try:
+            with open(PROFILE_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_profile_cache(cache: Dict[str, Dict]):
+    """Save profile cache to disk."""
+    os.makedirs(".tmp", exist_ok=True)
+    with open(PROFILE_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2, ensure_ascii=False)
+
+
+def normalize_linkedin_url(url: str) -> str:
+    """Normalize LinkedIn URL for cache key (strip trailing slash, query params)."""
+    url = url.split("?")[0].rstrip("/")
+    return url.lower()
+
+
+# =============================================================================
+# MODULE 3B: PROCESSED LEADS TRACKING (Duplicate Prevention)
+# =============================================================================
+
+PROCESSED_LEADS_FILE = ".tmp/processed_leads.json"
+
+
+def load_processed_leads() -> Dict[str, Dict]:
+    """
+    Load processed leads tracking file.
+
+    Returns:
+        Dict mapping normalized LinkedIn URLs to tracking metadata.
+    """
+    if os.path.exists(PROCESSED_LEADS_FILE):
+        try:
+            with open(PROCESSED_LEADS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_processed_leads(tracked: Dict[str, Dict]):
+    """Save processed leads tracking file."""
+    os.makedirs(".tmp", exist_ok=True)
+    with open(PROCESSED_LEADS_FILE, "w", encoding="utf-8") as f:
+        json.dump(tracked, f, indent=2, ensure_ascii=False)
+
+
+def add_to_processed_leads(leads: List[Dict], source: str = "competitor_post", list_id: int = None):
+    """
+    Add leads to the processed tracking file after successful upload.
+
+    Args:
+        leads: List of lead dictionaries that were uploaded
+        source: Source of leads (e.g., "competitor_post", "vayne")
+        list_id: HeyReach list ID they were uploaded to
+    """
+    tracked = load_processed_leads()
+    timestamp = datetime.now().isoformat()
+
+    for lead in leads:
+        url = lead.get("linkedinUrl") or lead.get("linkedin_url") or lead.get("profileUrl") or ""
+        if not url:
+            continue
+
+        normalized = normalize_linkedin_url(url)
+        name = lead.get("fullName") or lead.get("full_name") or ""
+
+        tracked[normalized] = {
+            "name": name,
+            "added": timestamp,
+            "source": source,
+            "list_id": list_id,
+        }
+
+    save_processed_leads(tracked)
+    print(f"Updated tracking file: {len(tracked)} total processed leads")
+
+
+def filter_unprocessed_urls(urls: List[str]) -> tuple[List[str], int]:
+    """
+    Filter URLs to remove already-processed leads.
+
+    Args:
+        urls: List of LinkedIn profile URLs
+
+    Returns:
+        Tuple of (unprocessed_urls, duplicate_count)
+    """
+    tracked = load_processed_leads()
+    unprocessed = []
+    duplicates = []
+
+    for url in urls:
+        normalized = normalize_linkedin_url(url)
+        if normalized in tracked:
+            duplicates.append((url, tracked[normalized].get("name", "Unknown")))
+        else:
+            unprocessed.append(url)
+
+    if duplicates:
+        print(f"\nDuplicate check: {len(urls)} -> {len(unprocessed)} URLs")
+        print(f"  Removed {len(duplicates)} already-processed leads:")
+        for url, name in duplicates[:5]:  # Show first 5
+            print(f"    - {name}")
+        if len(duplicates) > 5:
+            print(f"    ... and {len(duplicates) - 5} more")
+
+        # Calculate savings
+        savings = len(duplicates) * APIFY_COSTS["profile_scraper"]
+        print(f"  Estimated savings: ${savings:.2f} (avoided {len(duplicates)} profile scrapes)")
+
+    return unprocessed, len(duplicates)
+
 
 def scrape_linkedin_profiles(
     profile_urls: List[str],
@@ -396,7 +754,7 @@ def scrape_linkedin_profiles(
     poll_interval: int = 30
 ) -> List[Dict]:
     """
-    Scrape LinkedIn profiles using Apify.
+    Scrape LinkedIn profiles using Apify (with caching to avoid re-scraping).
 
     Args:
         profile_urls: List of profile URLs to scrape
@@ -412,13 +770,31 @@ def scrape_linkedin_profiles(
 
     import requests
 
-    print(f"Starting LinkedIn profile scraper for {len(profile_urls)} profiles...")
+    # Load cache and check which profiles we already have
+    cache = load_profile_cache()
+    cached_profiles = []
+    urls_to_scrape = []
+
+    for url in profile_urls:
+        cache_key = normalize_linkedin_url(url)
+        if cache_key in cache:
+            cached_profiles.append(cache[cache_key])
+        else:
+            urls_to_scrape.append(url)
+
+    print(f"Profile cache: {len(cached_profiles)} cached, {len(urls_to_scrape)} to scrape")
+
+    if not urls_to_scrape:
+        print("All profiles already cached, skipping Apify scrape")
+        return cached_profiles
+
+    print(f"Starting LinkedIn profile scraper for {len(urls_to_scrape)} NEW profiles...")
 
     # Start the actor run
     start_url = f"https://api.apify.com/v2/acts/{PROFILE_SCRAPER_ACTOR}/runs?token={APIFY_API_TOKEN}"
 
     payload = {
-        "profileUrls": profile_urls
+        "profileUrls": urls_to_scrape
     }
 
     try:
@@ -432,7 +808,7 @@ def scrape_linkedin_profiles(
 
     except Exception as e:
         print(f"Error starting profile scraper: {e}")
-        return []
+        return cached_profiles  # Return cached profiles even if scraper fails to start
 
     # Wait for initial scraping
     print(f"Waiting {wait_seconds}s for scraping...")
@@ -464,15 +840,29 @@ def scrape_linkedin_profiles(
     try:
         response = requests.get(data_url, headers={"Accept": "application/json"})
         response.raise_for_status()
-        profiles = response.json()
+        new_profiles = response.json()
 
-        print(f"Retrieved {len(profiles)} profiles")
-        cost_tracker.add_profile_scrape(len(profiles))
-        return profiles
+        print(f"Retrieved {len(new_profiles)} NEW profiles from Apify")
+        cost_tracker.add_profile_scrape(len(new_profiles))
+
+        # Add new profiles to cache
+        for profile in new_profiles:
+            profile_url = profile.get("linkedinUrl") or profile.get("profileUrl") or ""
+            if profile_url:
+                cache_key = normalize_linkedin_url(profile_url)
+                cache[cache_key] = profile
+
+        save_profile_cache(cache)
+        print(f"Profile cache updated: {len(cache)} total profiles cached")
+
+        # Combine cached + new profiles
+        all_profiles = cached_profiles + new_profiles
+        print(f"Returning {len(all_profiles)} total profiles ({len(cached_profiles)} cached + {len(new_profiles)} new)")
+        return all_profiles
 
     except Exception as e:
         print(f"Error fetching profile data: {e}")
-        return []
+        return cached_profiles  # Return cached profiles even if new scrape fails
 
 
 # =============================================================================
@@ -545,6 +935,103 @@ REJECTED_COMPANIES = [
     "santander", "getnet", "jpmorgan", "wells fargo",
     "bank of america", "citi", "hsbc"
 ]
+
+# Placeholder headlines that indicate empty/incomplete profiles
+EMPTY_HEADLINE_INDICATORS = ["--", "n/a", "na", "-", ""]
+
+
+def is_profile_complete(lead: Dict) -> Dict[str, Any]:
+    """
+    Check if a LinkedIn profile has enough data to evaluate.
+
+    Rejects profiles that are too sparse to meaningfully assess against ICP.
+    This prevents empty profiles from passing via "benefit of the doubt".
+
+    Args:
+        lead: Lead dictionary from LinkedIn scrape
+
+    Returns:
+        Dict with 'complete' boolean, 'reason', and 'missing_fields' list
+    """
+    missing_fields = []
+
+    # Check headline - reject placeholders
+    headline = (lead.get("headline") or "").strip().lower()
+    if not headline or headline in EMPTY_HEADLINE_INDICATORS:
+        missing_fields.append("headline")
+
+    # Check job title
+    job_title = lead.get("jobTitle") or lead.get("job_title")
+    if not job_title:
+        missing_fields.append("jobTitle")
+
+    # Check company name
+    company_name = lead.get("companyName") or lead.get("company")
+    if not company_name:
+        missing_fields.append("companyName")
+
+    # Check experiences count
+    exp_count = lead.get("experiencesCount", 0)
+    experiences = lead.get("experiences", [])
+    if exp_count == 0 and len(experiences) == 0:
+        missing_fields.append("experiences")
+
+    # Check profile picture (optional but adds confidence)
+    profile_pic = lead.get("profilePic") or lead.get("profilePicHighQuality")
+    has_profile_pic = profile_pic is not None
+
+    # Determine if profile is complete enough
+    # Require at least headline OR (jobTitle AND companyName)
+    has_headline = "headline" not in missing_fields
+    has_job_info = "jobTitle" not in missing_fields and "companyName" not in missing_fields
+    has_experience = "experiences" not in missing_fields
+
+    # Profile is complete if it has meaningful job info or headline + some experience
+    is_complete = has_job_info or (has_headline and has_experience)
+
+    if is_complete:
+        reason = "Profile has sufficient data for ICP evaluation"
+    else:
+        reason = f"Incomplete profile - missing: {', '.join(missing_fields)}"
+        if not has_profile_pic:
+            reason += " (also no profile picture)"
+
+    return {
+        "complete": is_complete,
+        "reason": reason,
+        "missing_fields": missing_fields,
+        "has_profile_pic": has_profile_pic
+    }
+
+
+def filter_complete_profiles(leads: List[Dict]) -> List[Dict]:
+    """
+    Filter out leads with incomplete/empty LinkedIn profiles.
+
+    Args:
+        leads: List of lead dictionaries
+
+    Returns:
+        List of leads with complete profiles
+    """
+    complete_leads = []
+    incomplete_count = 0
+
+    for lead in leads:
+        result = is_profile_complete(lead)
+        lead["profile_complete"] = result["complete"]
+        lead["profile_completeness_reason"] = result["reason"]
+        lead["has_profile_pic"] = result["has_profile_pic"]
+
+        if result["complete"]:
+            complete_leads.append(lead)
+        else:
+            incomplete_count += 1
+            lead_name = lead.get("fullName", lead.get("firstName", "Unknown"))
+            print(f"  [INCOMPLETE] {lead_name}: {result['reason']}")
+
+    print(f"\nProfile completeness filter: {len(leads)} -> {len(complete_leads)} leads ({incomplete_count} incomplete)")
+    return complete_leads
 
 
 def check_icp_authority(lead: Dict) -> Dict[str, Any]:
@@ -1148,7 +1635,8 @@ def run_full_pipeline(
     allowed_countries: List[str] = None,
     heyreach_list_id: int = None,
     dry_run: bool = False,
-    skip_icp: bool = False
+    skip_icp: bool = False,
+    skip_validation: bool = False
 ) -> Dict[str, Any]:
     """
     Run the full competitor post pipeline.
@@ -1185,15 +1673,20 @@ def run_full_pipeline(
         "posts_found": 0,
         "posts_filtered": 0,
         "engagers_found": 0,
+        "headline_prefilter_kept": 0,
+        "headline_prefilter_rejected": 0,
+        "headline_prefilter_non_english": 0,
+        "duplicates_removed": 0,
         "profiles_scraped": 0,
         "location_filtered": 0,
         "icp_qualified": 0,
         "personalized": 0,
+        "validated": 0,
         "uploaded": 0
     }
 
     # Step 1: Search Google for LinkedIn posts
-    print("\n[1/7] Searching Google for LinkedIn posts...")
+    print("\n[1/13] Searching Google for LinkedIn posts...")
     search_results = search_google_linkedin_posts(keywords, days_back)
     results["posts_found"] = len(search_results)
 
@@ -1202,7 +1695,7 @@ def run_full_pipeline(
         return results
 
     # Step 2: Filter by reactions
-    print("\n[2/7] Filtering posts by reactions...")
+    print("\n[2/13] Filtering posts by reactions...")
 
     # Extract organic results if nested
     posts = []
@@ -1223,7 +1716,7 @@ def run_full_pipeline(
         return results
 
     # Step 3: Scrape post engagers
-    print("\n[3/7] Scraping post engagers...")
+    print("\n[3/13] Scraping post engagers...")
     post_urls = [p.get("url", p.get("link", "")) for p in filtered_posts if p.get("url") or p.get("link")]
     engagers = scrape_post_engagers(post_urls)
     results["engagers_found"] = len(engagers)
@@ -1232,14 +1725,39 @@ def run_full_pipeline(
         print("No engagers found. Exiting.")
         return results
 
-    # Step 4: Aggregate and deduplicate profile URLs
-    print("\n[4/7] Aggregating profile URLs...")
+    # Build engagement context (for enriching profiles later)
+    print("Building engagement context...")
+    engagement_context = build_engagement_context(engagers)
+    print(f"Captured engagement context for {len(engagement_context)} profiles")
+
+    # Step 4: PRE-FILTER by headline (cost optimization)
+    print("\n[4/13] Pre-filtering by headline (cost optimization)...")
+    engagers, kept_count, rejected_count, non_english_count = prefilter_engagers_by_headline(engagers)
+    results["headline_prefilter_kept"] = kept_count
+    results["headline_prefilter_rejected"] = rejected_count
+    results["headline_prefilter_non_english"] = non_english_count
+
+    if not engagers:
+        print("All engagers rejected by headline pre-filter. Exiting.")
+        return results
+
+    # Step 5: Aggregate and deduplicate profile URLs
+    print("\n[5/13] Aggregating profile URLs...")
     profile_urls = aggregate_profile_urls(engagers)
     profile_urls = deduplicate_profile_urls(profile_urls)
     print(f"Found {len(profile_urls)} unique profile URLs")
 
-    # Step 5: Scrape LinkedIn profiles
-    print("\n[5/7] Scraping LinkedIn profiles...")
+    # Step 6: Filter out already-processed leads (early dedup)
+    print("\n[6/13] Checking for already-processed leads...")
+    profile_urls, duplicate_count = filter_unprocessed_urls(profile_urls)
+    results["duplicates_removed"] = duplicate_count
+    if not profile_urls:
+        print("All URLs already processed. Exiting.")
+        return results
+    print(f"Proceeding with {len(profile_urls)} unprocessed URLs")
+
+    # Step 7: Scrape LinkedIn profiles
+    print("\n[7/13] Scraping LinkedIn profiles...")
     profiles = scrape_linkedin_profiles(
         profile_urls,
         wait_seconds=config["scrape_wait_seconds"],
@@ -1251,8 +1769,15 @@ def run_full_pipeline(
         print("No profiles scraped. Exiting.")
         return results
 
-    # Step 6: Filter by location
-    print("\n[6/7] Filtering by location...")
+    # Enrich profiles with engagement context
+    print("Enriching profiles with engagement data...")
+    profiles = enrich_profiles_with_engagement(profiles, engagement_context)
+    # Also add source keyword for tracking
+    for profile in profiles:
+        profile["source_keyword"] = keywords
+
+    # Step 7: Filter by location
+    print("\n[8/13] Filtering by location...")
     location_filtered = filter_by_location(profiles, allowed_countries)
     results["location_filtered"] = len(location_filtered)
 
@@ -1260,17 +1785,26 @@ def run_full_pipeline(
         print("No leads in target locations. Exiting.")
         return results
 
-    # Step 7: ICP qualification
+    # Step 8: Filter incomplete profiles
+    print("\n[9/13] Filtering incomplete profiles...")
+    complete_profiles = filter_complete_profiles(location_filtered)
+    results["complete_profiles"] = len(complete_profiles)
+
+    if not complete_profiles:
+        print("No leads with complete profiles. Exiting.")
+        return results
+
+    # Step 9: ICP qualification
     if skip_icp:
-        print("\n[7/7] Skipping ICP qualification (--skip_icp flag)...")
-        qualified_leads = location_filtered
+        print("\n[10/13] Skipping ICP qualification (--skip_icp flag)...")
+        qualified_leads = complete_profiles
         for lead in qualified_leads:
             lead["icp_match"] = True
             lead["icp_confidence"] = "skipped"
             lead["icp_reason"] = "ICP check skipped"
     else:
-        print("\n[7/7] Qualifying leads (ICP)...")
-        qualified_leads = qualify_leads_with_deepseek(location_filtered)
+        print("\n[10/13] Qualifying leads (ICP)...")
+        qualified_leads = qualify_leads_with_deepseek(complete_profiles)
 
     results["icp_qualified"] = len(qualified_leads)
 
@@ -1278,23 +1812,36 @@ def run_full_pipeline(
         print("No leads passed ICP qualification. Exiting.")
         return results
 
-    # Step 8: Generate personalization
-    print("\n[8/8] Generating personalized messages...")
+    # Step 10: Generate personalization
+    print("\n[11/13] Generating personalized messages...")
     for lead in qualified_leads:
         lead["personalized_message"] = generate_personalization_deepseek(lead)
     results["personalized"] = len(qualified_leads)
 
-    # Step 9: Upload to HeyReach
+    # Step 11: Validate and fix flagged messages
+    if not skip_validation:
+        print("\n[12/13] Validating personalized messages...")
+        qualified_leads = validate_and_fix_batch(qualified_leads)
+        results["validated"] = len([l for l in qualified_leads if l.get("validation", {}).get("flag") == "PASS"])
+    else:
+        print("\n[12/13] Skipping validation (--skip_validation flag)...")
+        results["validated"] = results["personalized"]
+
+    # Step 13: Upload to HeyReach
     if not dry_run and heyreach_list_id:
-        print("\n[9/9] Uploading to HeyReach...")
+        print("\n[13/13] Uploading to HeyReach...")
         uploaded = upload_to_heyreach(
             qualified_leads,
             heyreach_list_id,
             custom_fields=["personalized_message"]
         )
         results["uploaded"] = uploaded
+
+        # Update tracking file with uploaded leads
+        if uploaded > 0:
+            add_to_processed_leads(qualified_leads, source="competitor_post", list_id=heyreach_list_id)
     else:
-        print("\n[9/9] Skipping HeyReach upload (dry run)")
+        print("\n[13/13] Skipping HeyReach upload (dry run)")
 
     # Save intermediate results
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1357,6 +1904,10 @@ def main():
         "--skip_icp", action="store_true",
         help="Skip ICP filtering (accept all location-filtered leads)"
     )
+    parser.add_argument(
+        "--skip_validation", action="store_true",
+        help="Skip validation and auto-fix step"
+    )
 
     args = parser.parse_args()
 
@@ -1367,7 +1918,8 @@ def main():
         allowed_countries=args.countries,
         heyreach_list_id=args.list_id,
         dry_run=args.dry_run,
-        skip_icp=args.skip_icp
+        skip_icp=args.skip_icp,
+        skip_validation=args.skip_validation
     )
 
     if results["icp_qualified"] > 0:
