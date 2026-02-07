@@ -84,6 +84,7 @@ def load_prospects_from_file(filepath: str) -> list:
             "company_industry": p.get("companyIndustry") or p.get("company_industry"),
             "location": p.get("addressWithCountry") or p.get("location"),
             "headline": p.get("headline"),
+            "email": p.get("email") or p.get("emailAddress"),
             "personalized_message": p.get("personalized_message"),
             "icp_match": p.get("icp_match"),
             "icp_reason": p.get("icp_reason"),
