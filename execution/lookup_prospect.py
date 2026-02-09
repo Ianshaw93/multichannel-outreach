@@ -9,7 +9,7 @@ Usage:
     python execution/lookup_prospect.py --first_name "John" --last_name "Smith"
 
 Environment:
-    SPEED_TO_LEAD_API_URL - API URL (default: https://speed-to-lead-production.up.railway.app)
+    SPEED_TO_LEAD_API_URL - API URL (default: https://speedtolead-production.up.railway.app)
 """
 
 import argparse
@@ -21,7 +21,7 @@ load_dotenv()
 
 SPEED_TO_LEAD_API_URL = os.getenv(
     "SPEED_TO_LEAD_API_URL",
-    "https://speed-to-lead-production.up.railway.app"
+    "https://speedtolead-production.up.railway.app"
 )
 
 

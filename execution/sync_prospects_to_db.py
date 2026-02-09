@@ -14,7 +14,7 @@ Usage:
     python execution/sync_prospects_to_db.py --file .tmp/ceo_leads_unique.json --source competitor_post --keyword "ceo"
 
 Environment:
-    SPEED_TO_LEAD_API_URL - API URL (default: https://speed-to-lead-production.up.railway.app)
+    SPEED_TO_LEAD_API_URL - API URL (default: https://speedtolead-production.up.railway.app)
 """
 
 import argparse
@@ -30,7 +30,7 @@ load_dotenv()
 # Default to Railway production URL
 SPEED_TO_LEAD_API_URL = os.getenv(
     "SPEED_TO_LEAD_API_URL",
-    "https://speed-to-lead-production.up.railway.app"
+    "https://speedtolead-production.up.railway.app"
 )
 
 
@@ -60,7 +60,7 @@ def infer_source_type(filename: str) -> str:
 
 def load_prospects_from_file(filepath: str) -> list:
     """Load prospects from a JSON file."""
-    with open(filepath) as f:
+    with open(filepath, encoding='utf-8') as f:
         data = json.load(f)
 
     if not isinstance(data, list):

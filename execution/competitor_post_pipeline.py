@@ -31,6 +31,8 @@ from typing import List, Dict, Optional, Any
 from dotenv import load_dotenv
 from prompts import get_linkedin_5_line_prompt
 from personalize_and_upload import validate_and_fix_batch
+from report_activity import report_from_pipeline_results
+from sync_prospects_to_db import sync_prospects
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
@@ -1840,6 +1842,21 @@ def run_full_pipeline(
         # Update tracking file with uploaded leads
         if uploaded > 0:
             add_to_processed_leads(qualified_leads, source="competitor_post", list_id=heyreach_list_id)
+
+            # Sync to speed_to_lead database
+            print("\n[SYNC] Syncing prospects to speed_to_lead database...")
+            try:
+                sync_result = sync_prospects(
+                    qualified_leads,
+                    source_type="competitor_post",
+                    source_keyword=keywords,
+                    heyreach_list_id=heyreach_list_id
+                )
+                print(f"  Synced: {sync_result}")
+                results["synced_to_db"] = sync_result.get("created", 0) + sync_result.get("updated", 0)
+            except Exception as e:
+                print(f"  Warning: Failed to sync to DB: {e}")
+                results["synced_to_db"] = 0
     else:
         print("\n[13/13] Skipping HeyReach upload (dry run)")
 
@@ -1863,6 +1880,13 @@ def run_full_pipeline(
 
     # Cost breakdown
     print("\n" + cost_tracker.get_summary())
+
+    # Report metrics to speed_to_lead
+    print("\n[REPORTING] Sending metrics to speed_to_lead...")
+    try:
+        report_from_pipeline_results(results, cost_tracker)
+    except Exception as e:
+        print(f"  Warning: Failed to report metrics: {e}")
 
     return results
 
