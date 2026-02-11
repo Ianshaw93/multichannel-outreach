@@ -38,7 +38,17 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial scaffold: 3-layer architecture for LinkedIn post pipeline\n\n- directives/ for SOPs\n- execution/ for Python scripts \\(hooks, hypefury, main entry\\)\n- prompts.py as single source of truth for AI prompts\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:www.linkedin.com)",
+      "Bash(alembic current:*)",
+      "Bash(railway status:*)",
+      "Bash(railway link:*)",
+      "Bash(railway whoami:*)",
+      "Bash(railway list:*)",
+      "Bash(railway service:*)",
+      "Bash(railway domain:*)",
+      "Bash(railway up:*)"
     ],
     "deny": [],
     "ask": [],

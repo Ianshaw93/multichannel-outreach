@@ -197,6 +197,54 @@ async def trigger_pipeline_cron(background_tasks: BackgroundTasks):
 
 
 # =============================================================================
+# BUYING SIGNAL WEBHOOK
+# =============================================================================
+
+BUYING_SIGNAL_LOG = os.path.join(".tmp", "buying_signal_payloads.jsonl")
+
+
+@app.post("/buying-signal")
+async def receive_buying_signal(data: dict):
+    """
+    Receives prospect payloads from buying signal agent.
+    Logs raw payload to .tmp/buying_signal_payloads.jsonl for inspection.
+    """
+    entry = {
+        "received_at": datetime.now().isoformat(),
+        "payload": data
+    }
+
+    # Append to JSONL log
+    os.makedirs(".tmp", exist_ok=True)
+    with open(BUYING_SIGNAL_LOG, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+    return {
+        "status": "received",
+        "received_at": entry["received_at"],
+        "fields_received": list(data.keys())
+    }
+
+
+@app.get("/buying-signal/log")
+async def view_buying_signal_log(limit: int = 20):
+    """View recent buying signal payloads for format inspection."""
+    if not os.path.exists(BUYING_SIGNAL_LOG):
+        return {"entries": [], "total": 0}
+
+    entries = []
+    with open(BUYING_SIGNAL_LOG, "r") as f:
+        for line in f:
+            if line.strip():
+                entries.append(json.loads(line))
+
+    return {
+        "entries": entries[-limit:],
+        "total": len(entries)
+    }
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 

@@ -58,6 +58,10 @@ from keyword_engagement_monitor import (
     aggregate_profile_urls,
     deduplicate_profile_urls
 )
+from competitor_post_pipeline import (
+    filter_unprocessed_urls,
+    add_to_processed_leads
+)
 
 
 # =============================================================================
@@ -87,14 +91,16 @@ def get_recent_posts_from_profile(profile_url: str, max_age_hours: int = 48) -> 
     return []
 
 
-def scrape_post_engagers(post_urls: List[str]) -> List[Dict]:
+def scrape_post_engagers(post_urls: List[str], page_number: int = 1, limit: int = 100) -> List[Dict]:
     """
     Scrape engagers (reactions) from LinkedIn posts using Apify.
     (Reused from keyword_engagement_monitor)
-    
+
     Args:
         post_urls: List of LinkedIn post URLs
-        
+        page_number: Page of reactions to fetch (1-indexed, 100 per page)
+        limit: Max reactions per post per page
+
     Returns:
         List of engager dictionaries
     """
@@ -112,10 +118,12 @@ def scrape_post_engagers(post_urls: List[str]) -> List[Dict]:
     all_engagers = []
 
     for url in post_urls:
-        print(f"  Scraping engagers from: {url}")
+        print(f"  Scraping engagers from: {url} (page {page_number})")
 
         run_input = {
-            "post_urls": [url]
+            "post_urls": [url],
+            "page_number": page_number,
+            "limit": limit
         }
 
         try:
@@ -142,11 +150,12 @@ def run_competitor_monitor(
     allowed_countries: List[str] = None,
     heyreach_list_id: int = None,
     dry_run: bool = True,
-    skip_icp: bool = False
+    skip_icp: bool = False,
+    page_number: int = 1
 ) -> Dict[str, Any]:
     """
     Run the competitor monitoring pipeline.
-    
+
     Args:
         competitor_url: LinkedIn profile URL of competitor
         post_urls: Specific post URLs to scrape (if not scraping profile)
@@ -155,7 +164,8 @@ def run_competitor_monitor(
         heyreach_list_id: HeyReach list ID for upload
         dry_run: If True, don't upload to HeyReach
         skip_icp: Skip ICP filtering
-        
+        page_number: Page of reactions to fetch (1-indexed, 100 per page)
+
     Returns:
         Pipeline results dictionary
     """
@@ -169,6 +179,7 @@ def run_competitor_monitor(
     print(f"Competitor: {competitor_name}")
     print(f"Competitor URL: {competitor_url or 'Manual post URLs'}")
     print(f"Post URLs provided: {len(post_urls) if post_urls else 0}")
+    print(f"Reactions page: {page_number}")
     print(f"Target countries: {', '.join(allowed_countries)}")
     print(f"HeyReach list ID: {heyreach_list_id or 'Not set (dry run only)'}")
     print(f"Dry run: {dry_run}")
@@ -187,7 +198,7 @@ def run_competitor_monitor(
 
     # Step 1: Get post URLs
     if not post_urls:
-        print("\n[1/7] Scraping recent posts from competitor profile...")
+        print("\n[1/9] Scraping recent posts from competitor profile...")
         post_urls = get_recent_posts_from_profile(competitor_url)
         
         if not post_urls:
@@ -196,13 +207,13 @@ def run_competitor_monitor(
             print(f"Example: --post_urls 'https://linkedin.com/posts/abc123' 'https://linkedin.com/posts/def456'")
             return results
     else:
-        print(f"\n[1/7] Using {len(post_urls)} provided post URLs")
+        print(f"\n[1/9] Using {len(post_urls)} provided post URLs")
     
     results["posts_scraped"] = len(post_urls)
 
     # Step 2: Scrape post engagers
-    print("\n[2/7] Scraping post engagers...")
-    engagers = scrape_post_engagers(post_urls)
+    print(f"\n[2/9] Scraping post engagers (page {page_number})...")
+    engagers = scrape_post_engagers(post_urls, page_number=page_number)
     results["engagers_found"] = len(engagers)
 
     if not engagers:
@@ -210,13 +221,22 @@ def run_competitor_monitor(
         return results
 
     # Step 3: Aggregate and deduplicate profile URLs
-    print("\n[3/7] Aggregating profile URLs...")
+    print("\n[3/9] Aggregating profile URLs...")
     profile_urls = aggregate_profile_urls(engagers)
     profile_urls = deduplicate_profile_urls(profile_urls)
     print(f"  Found {len(profile_urls)} unique profile URLs")
 
-    # Step 4: Scrape LinkedIn profiles
-    print("\n[4/7] Scraping LinkedIn profiles...")
+    # Step 4: Filter out already-processed leads (dedup)
+    print("\n[4/9] Checking for already-processed leads...")
+    profile_urls, duplicate_count = filter_unprocessed_urls(profile_urls)
+    results["duplicates_removed"] = duplicate_count
+    if not profile_urls:
+        print("All URLs already processed. Exiting.")
+        return results
+    print(f"  Proceeding with {len(profile_urls)} unprocessed URLs")
+
+    # Step 5: Scrape LinkedIn profiles
+    print("\n[5/8] Scraping LinkedIn profiles...")
     profiles = scrape_linkedin_profiles(profile_urls, wait_seconds=120, poll_interval=30)
     results["profiles_scraped"] = len(profiles)
 
@@ -224,8 +244,8 @@ def run_competitor_monitor(
         print("No profiles scraped. Exiting.")
         return results
 
-    # Step 5: Filter by location
-    print("\n[5/7] Filtering by location...")
+    # Step 6: Filter by location
+    print("\n[6/8] Filtering by location...")
     location_filtered = filter_by_location(profiles, allowed_countries)
     results["location_filtered"] = len(location_filtered)
 
@@ -233,16 +253,16 @@ def run_competitor_monitor(
         print("No leads in target locations. Exiting.")
         return results
 
-    # Step 6: ICP qualification
+    # Step 7: ICP qualification
     if skip_icp:
-        print("\n[6/7] Skipping ICP qualification...")
+        print("\n[7/8] Skipping ICP qualification...")
         qualified_leads = location_filtered
         for lead in qualified_leads:
             lead["icp_match"] = True
             lead["icp_confidence"] = "skipped"
             lead["icp_reason"] = "ICP check skipped"
     else:
-        print("\n[6/7] Qualifying leads (ICP)...")
+        print("\n[7/8] Qualifying leads (ICP)...")
         qualified_leads = qualify_leads_with_deepseek(location_filtered)
 
     results["icp_qualified"] = len(qualified_leads)
@@ -251,8 +271,8 @@ def run_competitor_monitor(
         print("No leads passed ICP qualification. Exiting.")
         return results
 
-    # Step 7: Generate personalization and add trigger metadata
-    print("\n[7/7] Generating personalized messages...")
+    # Step 8: Generate personalization and add trigger metadata
+    print("\n[8/8] Generating personalized messages...")
     timestamp = datetime.now().strftime("%Y-%m-%d")
     
     for lead in qualified_leads:
@@ -271,17 +291,21 @@ def run_competitor_monitor(
     
     results["personalized"] = len(qualified_leads)
 
-    # Step 8: Upload to HeyReach (only if not dry_run and has list_id)
+    # Step 9: Upload to HeyReach (only if not dry_run and has list_id)
     if not dry_run and heyreach_list_id:
-        print("\n[8/8] Uploading to HeyReach...")
+        print("\n[9/9] Uploading to HeyReach...")
         uploaded = upload_to_heyreach(
             qualified_leads,
             heyreach_list_id,
             custom_fields=["personalized_message"]
         )
         results["uploaded"] = uploaded
+
+        # Track uploaded leads to prevent duplicates
+        if uploaded > 0:
+            add_to_processed_leads(qualified_leads, source="competitor_monitor", list_id=heyreach_list_id)
     else:
-        print("\n[8/8] Skipping HeyReach upload (dry run mode)")
+        print("\n[9/9] Skipping HeyReach upload (dry run mode)")
 
     # Save results
     timestamp_file = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -344,6 +368,10 @@ def main():
         "--skip_icp", action="store_true",
         help="Skip ICP filtering"
     )
+    parser.add_argument(
+        "--page", type=int, default=1,
+        help="Page of reactions to fetch (1-indexed, 100 per page)"
+    )
 
     args = parser.parse_args()
 
@@ -386,7 +414,8 @@ def main():
         allowed_countries=countries,
         heyreach_list_id=list_id,
         dry_run=args.dry_run,
-        skip_icp=args.skip_icp
+        skip_icp=args.skip_icp,
+        page_number=args.page
     )
 
     if results["icp_qualified"] > 0:

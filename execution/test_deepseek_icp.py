@@ -20,15 +20,18 @@ load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 
-# Test profiles with expected results
+# Test profiles with expected results (matches scraped profile structure)
 TEST_PROFILES = [
     {
         "profile": {
             "full_name": "John Smith",
             "job_title": "CEO & Founder",
+            "headline": "CEO & Founder @ Growth Agency | Helping B2B companies scale",
             "company": "Growth Agency",
-            "location": "San Francisco, CA",
-            "industry": "Marketing Services"
+            "company_employees": "11-50",
+            "company_industry": "Marketing Services",
+            "summary": "We help B2B SaaS and tech companies build their brand and automate outreach.",
+            "job_description": "Leading agency strategy and client acquisition."
         },
         "expected_match": True,
         "reason": "CEO/Founder at B2B agency"
@@ -37,9 +40,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Sarah Johnson",
             "job_title": "VP of Sales",
+            "headline": "VP of Sales @ SaaS Startup Inc",
             "company": "SaaS Startup Inc",
-            "location": "Austin, TX",
-            "industry": "Software"
+            "company_employees": "51-200",
+            "company_industry": "Software",
+            "summary": "Scaling revenue teams at high-growth SaaS companies.",
+            "job_description": "Overseeing sales strategy, team development, and revenue targets."
         },
         "expected_match": True,
         "reason": "VP at SaaS company"
@@ -48,9 +54,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Mike Davis",
             "job_title": "Managing Partner",
+            "headline": "Managing Partner | Strategy Consulting",
             "company": "Consulting Partners LLC",
-            "location": "New York, NY",
-            "industry": "Consulting"
+            "company_employees": "11-50",
+            "company_industry": "Management Consulting",
+            "summary": "Helping mid-market companies with M&A and operational excellence.",
+            "job_description": "Leading consulting engagements and business development."
         },
         "expected_match": True,
         "reason": "Managing Partner at consulting firm"
@@ -59,9 +68,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Emily Chen",
             "job_title": "Junior Marketing Associate",
+            "headline": "Junior Marketing Associate at Tech Startup",
             "company": "Tech Startup",
-            "location": "Seattle, WA",
-            "industry": "Technology"
+            "company_employees": "11-50",
+            "company_industry": "Technology",
+            "summary": "Recent grad passionate about digital marketing.",
+            "job_description": "Supporting social media campaigns and content creation."
         },
         "expected_match": False,
         "reason": "Junior role - not decision maker"
@@ -70,9 +82,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Carlos Martinez",
             "job_title": "Branch Manager",
+            "headline": "Branch Manager at Santander Bank",
             "company": "Santander Bank",
-            "location": "Miami, FL",
-            "industry": "Banking"
+            "company_employees": "10001+",
+            "company_industry": "Banking",
+            "summary": "Managing retail banking operations.",
+            "job_description": "Overseeing branch operations and customer service."
         },
         "expected_match": False,
         "reason": "Traditional banking institution - hard rejection"
@@ -81,9 +96,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Lisa Anderson",
             "job_title": "Student Intern",
+            "headline": "MBA Student | Summer Intern",
             "company": "ABC Corp",
-            "location": "Boston, MA",
-            "industry": "Business"
+            "company_employees": "201-500",
+            "company_industry": "Business Services",
+            "summary": "MBA candidate seeking full-time opportunities.",
+            "job_description": "Supporting the marketing team with research projects."
         },
         "expected_match": False,
         "reason": "Student/Intern - not qualified"
@@ -92,9 +110,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "David Kim",
             "job_title": "Delivery Driver",
+            "headline": "Delivery Driver at Local Logistics",
             "company": "Local Logistics",
-            "location": "Chicago, IL",
-            "industry": "Transportation"
+            "company_employees": "51-200",
+            "company_industry": "Transportation",
+            "summary": "Reliable driver with 5 years experience.",
+            "job_description": "Delivering packages across the metro area."
         },
         "expected_match": False,
         "reason": "Physical labor role - hard rejection"
@@ -103,9 +124,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Jessica Brown",
             "job_title": "Co-Founder & CTO",
+            "headline": "Co-Founder & CTO @ AI Solutions | Building the future of AI",
             "company": "AI Solutions",
-            "location": "Toronto, Canada",
-            "industry": "Artificial Intelligence"
+            "company_employees": "11-50",
+            "company_industry": "Artificial Intelligence",
+            "summary": "Technical leader building AI products for enterprise.",
+            "job_description": "Leading product development and engineering teams."
         },
         "expected_match": True,
         "reason": "Co-Founder at tech company"
@@ -114,9 +138,12 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Robert Taylor",
             "job_title": "Owner",
+            "headline": "Business Coach | Helping entrepreneurs scale",
             "company": "RT Coaching",
-            "location": "Denver, CO",
-            "industry": "Professional Training"
+            "company_employees": "2-10",
+            "company_industry": "Professional Training and Coaching",
+            "summary": "Executive coach helping founders and CEOs reach their potential.",
+            "job_description": "1:1 coaching, workshops, and speaking engagements."
         },
         "expected_match": True,
         "reason": "Owner of coaching business"
@@ -125,14 +152,63 @@ TEST_PROFILES = [
         "profile": {
             "full_name": "Maria Garcia",
             "job_title": "Director of Marketing",
+            "headline": "Director of Marketing @ Growth Agency",
             "company": "Growth Agency",
-            "location": "Los Angeles, CA",
-            "industry": "Marketing"
+            "company_employees": "11-50",
+            "company_industry": "Marketing Services",
+            "summary": "Leading marketing strategy for B2B clients.",
+            "job_description": "Overseeing campaigns, team, and client relationships."
         },
         "expected_match": True,
         "reason": "Director level at agency - benefit of doubt"
+    },
+    {
+        "profile": {
+            "full_name": "Tom Wilson",
+            "job_title": "Account Executive",
+            "headline": "Account Executive at Oracle | Crushing quota",
+            "company": "Oracle",
+            "company_employees": "10001+",
+            "company_industry": "Software",
+            "summary": "Enterprise sales professional exceeding targets.",
+            "job_description": "Managing territory, hitting quota, driving new business."
+        },
+        "expected_match": False,
+        "reason": "Salesperson at enterprise - no budget authority"
+    },
+    {
+        "profile": {
+            "fullName": "Thomas Neeck",
+            "jobTitle": "Director of Product Marketing",
+            "headline": "Product Marketing Director | B2B SaaS",
+            "companyName": "Everest Group",
+            "companySize": "501-1000",
+            "industry": "Management Consulting",
+            "jobStillWorking": False,
+            "about": "Product marketing leader with enterprise SaaS experience."
+        },
+        "expected_match": False,
+        "reason": "No longer at listed company - stale data"
+    },
+    {
+        "profile": {
+            "fullName": "Joe Gedeon",
+            "jobTitle": "District Manager - Major Accounts",
+            "headline": "Driving Business Growth with HCM Solutions",
+            "companyName": "ADP",
+            "companySize": "10001+",
+            "industry": "Human Resources",
+            "jobStillWorking": True,
+            "about": "As an Owner with experience in business development..."
+        },
+        "expected_match": False,
+        "reason": "District Manager at ADP - enterprise employee, not decision maker"
     }
 ]
+def truncate(text, max_chars=1500):
+    if not text or text == 'N/A':
+        return 'N/A'
+    return text[:max_chars] + '...' if len(text) > max_chars else text
 
 def check_icp_match(lead):
     """Check if lead matches ICP using DeepSeek."""
@@ -140,32 +216,43 @@ def check_icp_match(lead):
         print("❌ ERROR: DEEPSEEK_API_KEY not found in .env")
         sys.exit(1)
 
+    # Check if still working at current job (for competitor_post format)
+    still_working = lead.get('jobStillWorking', True)  # Default True for scraped profiles without this field
+
     lead_summary = f"""
-Lead: {lead.get('full_name', 'Unknown')}
-Title: {lead.get('job_title', 'Unknown')}
-Company: {lead.get('company', 'Unknown')}
-Location: {lead.get('location', 'Unknown')}
-Industry: {lead.get('industry', 'N/A')}
+Lead: {lead.get('full_name', lead.get('fullName', 'Unknown'))}
+Current Title: {lead.get('job_title', lead.get('jobTitle', 'Unknown'))}
+Headline: {lead.get('headline', 'N/A')}
+Current Company: {lead.get('company', lead.get('companyName', 'Unknown'))}
+Company Size: {lead.get('company_employees', lead.get('companySize', 'Unknown'))}
+Industry: {lead.get('company_industry', lead.get('industry', 'N/A'))}
+Still Working Here: {still_working}
+About: {truncate(lead.get('summary', lead.get('about', 'N/A')))}
+Role Description: {truncate(lead.get('job_description', 'N/A'))}
 """
 
-    system_prompt = """Role: B2B Lead Qualification Filter.
+    system_prompt = """Role: Expert B2B Lead Qualification Analyst.
 
-Objective: Categorize LinkedIn profiles based on Authority and Industry fit for a Sales Automation and Personal Branding agency.
+Objective: Categorize LinkedIn profiles to identify High-Ticket Decision Makers for a Sales Automation & Personal Branding agency.
 
-Rules for Authority (Strict):
-- Qualify: CEOs, Founders, Co-Founders, Managing Directors, Owners, Partners, VPs, and C-Suite executives.
-- Reject: Interns, Students, Junior staff, Administrative assistants (e.g., "Assessor administrativo"), and low-level individual contributors.
+CRITICAL RULES:
+1. CURRENT ROLE ONLY: If "Still Working Here" is False, REJECT immediately. We only evaluate people in their CURRENT role, not past positions.
+2. Prioritize the CURRENT TITLE field over the About section. The About section may contain aspirational or past descriptions.
 
-Rules for B2B Industry (Lenient):
-- Qualify: High-ticket service industries (Agencies, SaaS, Consulting, Coaching, Tech).
+Logic for Qualification (The "Authority" Check):
+1. MANDATORY YES: Founders, CEOs, Owners, Managing Partners, and C-Suite (CMO, CRO, CEO).
+2. COMPANY SIZE WEIGHTING:
+   - Small/Mid-Market (<200 employees): VPs and Directors are QUALIFIED.
+   - Enterprise (200+ employees or "10001+"): VPs are QUALIFIED; "Managers", "District Managers", and "Account Executives" are REJECTED.
+3. THE SALESPERSON TRAP: Reject profiles with titles like "Account Executive", "Sales Rep", "District Manager", "Territory Manager" at large companies. They are employees, not buyers.
 
-The "Benefit of Doubt" Rule: If you are 5/10 sure or above that both points are true: (i) a business is B2B, and (ii) the person is a top-level decision-maker, Qualify them (Set to true). Only reject if they are clearly non-decision makers or in non-business roles.
+Rules for Industry Fit:
+- TARGET: High-ticket B2B (SaaS, AI, Fintech, Consulting, Agency Owners, Professional Services).
+- REJECT: Local retail, blue-collar services, traditional massive banks (Santander/Getnet), and public sector/government.
 
-Hard Rejections:
-- Leads from massive traditional Banking/Financial institutions (e.g., Santander, Getnet).
-- Physical labor or local retail roles (e.g., Driver, Technician, Cashier).
+The "Red Flag" Rule: Employees at large companies like ADP, Oracle, Google, Salesforce in Manager/AE/Rep roles are ALWAYS rejected - they have no budget authority.
 
-You are an expert at evaluating sales leads. Always respond with valid JSON."""
+Output: Respond ONLY in valid JSON."""
 
     user_prompt = f"""Evaluate this LinkedIn profile:
 
@@ -228,7 +315,9 @@ def main():
         expected_match = test_case["expected_match"]
         test_reason = test_case["reason"]
 
-        print(f"\n[TEST {idx}/{len(TEST_PROFILES)}] {profile['full_name']} - {profile['job_title']}")
+        name = profile.get('full_name', profile.get('fullName', 'Unknown'))
+        title = profile.get('job_title', profile.get('jobTitle', 'Unknown'))
+        print(f"\n[TEST {idx}/{len(TEST_PROFILES)}] {name} - {title}")
         print(f"  Expected: {'✅ QUALIFY' if expected_match else '❌ REJECT'} ({test_reason})")
 
         result = check_icp_match(profile)
@@ -238,7 +327,7 @@ def main():
             failed += 1
             results.append({
                 "test": idx,
-                "profile": profile['full_name'],
+                "profile": name,
                 "expected": expected_match,
                 "actual": None,
                 "status": "ERROR"
@@ -264,7 +353,7 @@ def main():
 
         results.append({
             "test": idx,
-            "profile": profile['full_name'],
+            "profile": name,
             "expected": expected_match,
             "actual": actual_match,
             "confidence": confidence,
