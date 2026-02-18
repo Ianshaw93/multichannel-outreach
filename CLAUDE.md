@@ -10,6 +10,16 @@ This is part of a 3-project prospecting/outreach system:
 | **multichannel-outreach** | `C:\Users\IanShaw\localProgramming\smiths\multichannel-outreach` | Messaging & outreach automation |
 | **contentCreator** | `C:\Users\IanShaw\localProgramming\smiths\contentCreator` | Content generation |
 
+## Railway Deployment
+
+The shared API server is deployed under the **speed_to_lead** service on Railway:
+- **Project:** `smiths-li-backend`
+- **Service:** `speed_to_lead`
+- **URL:** `https://speedtolead-production.up.railway.app`
+- **Source repo:** `speed_to_lead` (not multichannel-outreach)
+
+Any new API endpoints (webhooks, etc.) must be added to `speed_to_lead/execution/api_server.py` — that's the codebase Railway deploys.
+
 > This file is mirrored across CLAUDE.md, AGENTS.md, and GEMINI.md so the same instructions load in any AI environment.
 
 You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.
@@ -33,6 +43,10 @@ You operate within a 3-layer architecture that separates concerns to maximize re
 - Reliable, testable, fast. Use scripts instead of manual work.
 
 **Why this works:** if you do everything yourself, errors compound. 90% accuracy per step = 59% success over 5 steps. The solution is push complexity into deterministic code. That way you just focus on decision-making.
+
+## Deprecated Tools
+
+**Vayne.io (`scrape_linkedin_vayne.py`)** — No active subscription. Do NOT use in any workflows. Use Apify `dev_fusion~Linkedin-Profile-Scraper` for LinkedIn profile scraping instead.
 
 ## Operating Principles
 

@@ -95,6 +95,11 @@ def load_prospects_from_file(filepath: str) -> list:
             "post_date": p.get("post_date"),
             "scraped_at": p.get("scraped_at"),
             "source_keyword": p.get("source_keyword"),
+            # Activity fields
+            "connection_count": p.get("connectionsCount") or p.get("connection_count"),
+            "follower_count": p.get("followersCount") or p.get("follower_count"),
+            "is_creator": p.get("isCreator") or p.get("is_creator"),
+            "activity_score": p.get("activity_score"),
         })
 
     return prospects

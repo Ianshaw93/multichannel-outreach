@@ -596,6 +596,322 @@ class TestUtilities:
 
 
 # =============================================================================
+# MODULE 8: SUPREME_CODER NORMALIZATION
+# =============================================================================
+
+class TestSupremeCoderNormalization:
+    """Tests for supreme_coder -> dev_fusion profile normalization."""
+
+    @pytest.fixture
+    def supreme_coder_flat_positions(self):
+        """Real supreme_coder profile with flat positions (George Athannassov)."""
+        return {
+            "firstName": "George",
+            "lastName": "Athannassov",
+            "headline": "Chief Technology Officer at TAVA Discovery",
+            "publicIdentifier": "athannassov",
+            "creator": False,
+            "influencer": False,
+            "premium": False,
+            "id": "482116",
+            "pictureUrl": "https://media.licdn.com/dms/image/profile.jpg",
+            "geoLocationName": "Colorado Springs, Colorado, United States",
+            "geoCountryName": "United States",
+            "jobTitle": "Chief Technology Officer",
+            "summary": "Always in Technology. Tech companies' founder and CTO all my life.",
+            "positions": [
+                {
+                    "title": "Chief Technology Officer",
+                    "locationName": "Colorado Springs, Colorado Area",
+                    "timePeriod": {
+                        "startDate": {"month": 9, "year": 2022},
+                        "endDate": None,
+                    },
+                    "totalDuration": "3 yrs 6 mos",
+                    "description": "CTO at TAVA Discovery",
+                    "company": {
+                        "url": "https://www.linkedin.com/company/89514089/",
+                        "name": "Tava Discovery",
+                    },
+                },
+                {
+                    "title": "CEO",
+                    "locationName": "Colorado Springs",
+                    "timePeriod": {
+                        "startDate": {"month": 9, "year": 2003},
+                        "endDate": {"month": 12, "year": 2022},
+                    },
+                    "totalDuration": "19 yrs 4 mos",
+                    "description": "CEO and Co-Founder of ITBrix",
+                    "company": {"url": "", "name": "ITBrix LLC"},
+                },
+            ],
+            "educations": [{"schoolName": "University of Plovdiv"}],
+            "certifications": [],
+            "languages": [{"name": "Bulgarian"}, {"name": "English"}],
+            "skills": [{"name": "Technology Leadership", "endorsements": 0}],
+            "connectionsCount": 1240,
+            "followerCount": 1258,
+            "isVerified": False,
+            "companyName": "TAVA",
+            "companyLinkedinUrl": "https://www.linkedin.com/company/tava-learning/",
+            "inputUrl": "https://www.linkedin.com/in/athannassov",
+        }
+
+    @pytest.fixture
+    def supreme_coder_grouped_positions(self):
+        """Real supreme_coder profile with grouped positions (Aakash Devkota)."""
+        return {
+            "firstName": "Aakash",
+            "lastName": "Devkota",
+            "headline": "16 • Helping creators to scale their video content.",
+            "publicIdentifier": "aakashdkt",
+            "creator": True,
+            "influencer": False,
+            "premium": True,
+            "id": "1205664206",
+            "pictureUrl": "https://media.licdn.com/dms/image/profile2.jpg",
+            "geoLocationName": "United States",
+            "geoCountryName": "United States",
+            "jobTitle": "",
+            "summary": "Introducing Catalyst...",
+            "positions": [
+                {
+                    "company": {
+                        "url": "https://www.linkedin.com/company/102466506/",
+                        "name": "Catalyst",
+                    },
+                    "totalDuration": "1 yr 7 mos",
+                    "positions": [
+                        {
+                            "title": "Founder",
+                            "locationName": "On-site",
+                            "timePeriod": {
+                                "startDate": {"month": 8, "year": 2024},
+                                "endDate": None,
+                            },
+                            "totalDuration": "1 yr 7 mos",
+                        },
+                        {
+                            "title": "Chief Executive Officer",
+                            "locationName": "United States",
+                            "timePeriod": {
+                                "startDate": {"month": 8, "year": 2024},
+                                "endDate": None,
+                            },
+                            "totalDuration": "1 yr 7 mos",
+                        },
+                    ],
+                }
+            ],
+            "educations": [],
+            "certifications": [],
+            "languages": [{"name": "English"}, {"name": "Spanish"}],
+            "skills": [{"name": "Video Editing", "endorsements": 0}],
+            "connectionsCount": 1305,
+            "followerCount": 1434,
+            "isVerified": False,
+            "companyName": "Catalyst",
+            "companyLinkedinUrl": "https://www.linkedin.com/company/catalystsagency/",
+            "inputUrl": "https://www.linkedin.com/in/aakashdkt",
+        }
+
+    @pytest.fixture
+    def supreme_coder_empty_profile(self):
+        """supreme_coder profile with no positions."""
+        return {
+            "firstName": "William",
+            "lastName": "Rodriguez",
+            "headline": "Twitter lead gen systems for B2B founders",
+            "publicIdentifier": "william-rodriguez-144a63248",
+            "id": "1029796612",
+            "pictureUrl": "https://media.licdn.com/dms/image/profile3.jpg",
+            "geoLocationName": "United States",
+            "geoCountryName": "United States",
+            "jobTitle": "",
+            "summary": "You deserve better than random posts.",
+            "positions": [],
+            "educations": [],
+            "certifications": [],
+            "languages": [],
+            "skills": [],
+            "connectionsCount": 28,
+            "followerCount": 28,
+            "isVerified": True,
+            "companyName": "",
+            "companyLinkedinUrl": "",
+            "inputUrl": "https://www.linkedin.com/in/william-rodriguez-144a63248",
+        }
+
+    def test_normalize_flat_positions_basic_fields(self, supreme_coder_flat_positions):
+        """Test basic identity fields are mapped correctly."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert result["firstName"] == "George"
+        assert result["lastName"] == "Athannassov"
+        assert result["fullName"] == "George Athannassov"
+        assert result["headline"] == "Chief Technology Officer at TAVA Discovery"
+        assert result["linkedinUrl"] == "https://www.linkedin.com/in/athannassov"
+        assert result["linkedinId"] == "482116"
+        assert result["publicIdentifier"] == "athannassov"
+
+    def test_normalize_flat_positions_job_info(self, supreme_coder_flat_positions):
+        """Test job title and company are derived correctly."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert result["jobTitle"] == "Chief Technology Officer"
+        assert result["companyName"] == "TAVA"
+        assert result["about"] == "Always in Technology. Tech companies' founder and CTO all my life."
+
+    def test_normalize_flat_positions_location(self, supreme_coder_flat_positions):
+        """Test location fields are mapped correctly."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert result["addressCountryOnly"] == "United States"
+        assert result["addressWithCountry"] == "Colorado Springs, Colorado, United States"
+        assert result["addressWithoutCountry"] == "Colorado Springs, Colorado"
+
+    def test_normalize_flat_positions_experiences(self, supreme_coder_flat_positions):
+        """Test experiences are built from positions."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert result["experiencesCount"] == 2
+        assert len(result["experiences"]) == 2
+        assert result["experiences"][0]["companyName"] == "Tava Discovery"
+        assert result["experiences"][0]["title"] == "Chief Technology Officer"
+        assert result["experiences"][0]["stillWorking"] is True
+        assert result["experiences"][1]["companyName"] == "ITBrix LLC"
+        assert result["experiences"][1]["stillWorking"] is False
+
+    def test_normalize_flat_positions_social(self, supreme_coder_flat_positions):
+        """Test connections, followers, profile pic are mapped."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert result["connections"] == 1240
+        assert result["followers"] == 1258
+        assert result["profilePic"] is not None
+        assert result["profilePicHighQuality"] is not None
+
+    def test_normalize_flat_positions_unavailable_fields(self, supreme_coder_flat_positions):
+        """Test fields not available in supreme_coder are None/empty."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert result["companyIndustry"] is None
+        assert result["companySize"] is None
+        assert result["companyWebsite"] is None
+        assert result["email"] is None
+        assert result["mobileNumber"] is None
+
+    def test_normalize_grouped_positions(self, supreme_coder_grouped_positions):
+        """Test normalization flattens grouped positions."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_grouped_positions)
+
+        # Grouped positions should be flattened
+        assert result["experiencesCount"] == 2
+        assert result["experiences"][0]["title"] == "Founder"
+        assert result["experiences"][0]["companyName"] == "Catalyst"
+        assert result["experiences"][1]["title"] == "Chief Executive Officer"
+
+    def test_normalize_grouped_positions_job_title_fallback(self, supreme_coder_grouped_positions):
+        """Test jobTitle falls back to first position when top-level is empty."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_grouped_positions)
+
+        # Top-level jobTitle is empty, should use first flattened position
+        assert result["jobTitle"] == "Founder"
+        assert result["companyName"] == "Catalyst"
+
+    def test_normalize_empty_positions(self, supreme_coder_empty_profile):
+        """Test normalization handles profiles with no positions."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_empty_profile)
+
+        assert result["fullName"] == "William Rodriguez"
+        assert result["experiencesCount"] == 0
+        assert result["experiences"] == []
+        assert result["jobTitle"] == ""
+        assert result["companyName"] == ""
+        assert result["isVerified"] is True
+
+    def test_normalize_country_only_location(self, supreme_coder_empty_profile):
+        """Test location when geoLocationName is just a country (no city)."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_empty_profile)
+
+        assert result["addressCountryOnly"] == "United States"
+        assert result["addressWithCountry"] == "United States"
+        # No comma -> same value
+        assert result["addressWithoutCountry"] == "United States"
+
+    def test_normalize_passthrough_fields(self, supreme_coder_flat_positions):
+        """Test supplementary fields are passed through."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        assert len(result["educations"]) == 1
+        assert result["educations"][0]["schoolName"] == "University of Plovdiv"
+        assert len(result["languages"]) == 2
+        assert len(result["skills"]) >= 1
+
+    def test_normalize_produces_fields_consumed_by_location_filter(self, supreme_coder_flat_positions):
+        """Test normalized output works with filter_by_location."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile, filter_by_location
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        filtered = filter_by_location([result], ["United States", "Canada"])
+        assert len(filtered) == 1
+
+    def test_normalize_produces_fields_consumed_by_icp_check(self, supreme_coder_flat_positions):
+        """Test normalized output works with check_icp_authority."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile, check_icp_authority
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        icp = check_icp_authority(result)
+        # CTO should be qualified (contains "chief")
+        assert icp["qualified"] is True
+
+    def test_normalize_produces_fields_consumed_by_heyreach(self, supreme_coder_flat_positions):
+        """Test normalized output works with format_lead_for_heyreach."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile, format_lead_for_heyreach
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        formatted = format_lead_for_heyreach(result)
+        assert formatted["firstName"] == "George"
+        assert formatted["lastName"] == "Athannassov"
+        assert formatted["profileUrl"] == "https://www.linkedin.com/in/athannassov"
+
+    def test_normalize_produces_fields_consumed_by_profile_completeness(self, supreme_coder_flat_positions):
+        """Test normalized output works with is_profile_complete."""
+        from competitor_post_pipeline import normalize_supreme_coder_profile, is_profile_complete
+
+        result = normalize_supreme_coder_profile(supreme_coder_flat_positions)
+
+        completeness = is_profile_complete(result)
+        assert completeness["complete"] is True
+
+
+# =============================================================================
 # RUN CONFIGURATION
 # =============================================================================
 

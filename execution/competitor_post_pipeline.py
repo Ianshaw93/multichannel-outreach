@@ -49,7 +49,7 @@ HEYREACH_API_KEY = os.getenv("HEYREACH_API_KEY")
 # Apify Actor IDs from the n8n workflow
 GOOGLE_SEARCH_ACTOR = "nFJndFXA5zjCTuudP"  # apify/google-search-scraper
 POST_REACTIONS_ACTOR = "J9UfswnR3Kae4O6vm"  # apimaestro/linkedin-post-reactions
-PROFILE_SCRAPER_ACTOR = "dev_fusion~Linkedin-Profile-Scraper"
+PROFILE_SCRAPER_ACTOR = "supreme_coder~linkedin-profile-scraper"
 
 
 # =============================================================================
@@ -79,7 +79,7 @@ def get_default_config() -> Dict[str, Any]:
 APIFY_COSTS = {
     "google_search": 0.004,      # ~$0.004 per search result
     "post_reactions": 0.008,     # ~$0.008 per post scraped
-    "profile_scraper": 0.025,    # ~$0.025 per profile scraped
+    "profile_scraper": 0.004,    # ~$0.004 per profile ($3.67/1K via supreme_coder)
 }
 
 # DeepSeek pricing (USD per 1M tokens) - very cheap
@@ -439,8 +439,8 @@ HEADLINE_REJECT_KEYWORDS = [
 NON_ENGLISH_INDICATORS = [
     # Portuguese
     "diretor", "gerente", "fundador", "empresário", "sócio", "coordenador",
-    # Spanish
-    "director", "gerente", "fundador", "empresario", "socio", "coordinador",
+    # Spanish (note: "director" omitted — identical in English, causes false positives)
+    "gerente", "fundador", "empresario", "socio", "coordinador",
     # French
     "directeur", "fondateur", "gérant", "président", "responsable",
     # German
@@ -653,6 +653,104 @@ def normalize_linkedin_url(url: str) -> str:
     return url.lower()
 
 
+def _flatten_positions(positions: list) -> list:
+    """Flatten supreme_coder positions which may have nested position groups."""
+    flat = []
+    for pos in positions:
+        # Grouped format: {company: {...}, positions: [{title, ...}, ...]}
+        if "positions" in pos and isinstance(pos["positions"], list):
+            company = pos.get("company", {})
+            for sub in pos["positions"]:
+                merged = {**sub, "company": company}
+                flat.append(merged)
+        else:
+            flat.append(pos)
+    return flat
+
+
+def normalize_supreme_coder_profile(raw: dict) -> dict:
+    """Convert supreme_coder actor output to dev_fusion field format.
+
+    This normalization layer means all downstream consumers (ICP filter,
+    personalization, HeyReach upload, etc.) continue working unchanged.
+    """
+    # Flatten positions (handles both flat and grouped formats)
+    positions = _flatten_positions(raw.get("positions", []))
+
+    # Build experiences list
+    experiences = []
+    for pos in positions:
+        company_obj = pos.get("company") or {}
+        exp = {
+            "companyName": company_obj.get("name", ""),
+            "title": pos.get("title", ""),
+            "jobDescription": pos.get("description", ""),
+            "location": pos.get("locationName", ""),
+            "totalDuration": pos.get("totalDuration", ""),
+        }
+        tp = pos.get("timePeriod") or {}
+        if tp:
+            start = tp.get("startDate") or {}
+            month = start.get("month", "")
+            year = start.get("year", "")
+            exp["startedOn"] = f"{month}-{year}" if month and year else str(year)
+            exp["stillWorking"] = tp.get("endDate") is None
+        experiences.append(exp)
+
+    # Current position (first in flattened list)
+    current = positions[0] if positions else {}
+    current_company = (current.get("company") or {})
+
+    # Use top-level jobTitle if available, else derive from first position
+    job_title = raw.get("jobTitle") or current.get("title", "")
+
+    # Use top-level companyName if available, else derive from first position
+    company_name = raw.get("companyName") or current_company.get("name", "")
+
+    geo_location = raw.get("geoLocationName", "")
+    # addressWithoutCountry: strip last comma-separated segment (country)
+    if geo_location and "," in geo_location:
+        addr_without_country = geo_location.rsplit(",", 1)[0].strip()
+    else:
+        addr_without_country = geo_location
+
+    return {
+        "linkedinUrl": raw.get("inputUrl", ""),
+        "firstName": raw.get("firstName", ""),
+        "lastName": raw.get("lastName", ""),
+        "fullName": f"{raw.get('firstName', '')} {raw.get('lastName', '')}".strip(),
+        "headline": raw.get("headline", ""),
+        "about": raw.get("summary", ""),
+        "jobTitle": job_title,
+        "companyName": company_name,
+        "companyIndustry": None,
+        "companySize": None,
+        "companyWebsite": None,
+        "companyLinkedin": raw.get("companyLinkedinUrl") or current_company.get("url", ""),
+        "addressCountryOnly": raw.get("geoCountryName", ""),
+        "addressWithCountry": geo_location,
+        "addressWithoutCountry": addr_without_country,
+        "connections": raw.get("connectionsCount", 0),
+        "followers": raw.get("followerCount", 0),
+        "experiences": experiences,
+        "experiencesCount": len(experiences),
+        "profilePic": raw.get("pictureUrl"),
+        "profilePicHighQuality": raw.get("pictureUrl"),
+        "linkedinId": raw.get("id", ""),
+        "publicIdentifier": raw.get("publicIdentifier", ""),
+        "isPremium": raw.get("premium", False),
+        "isVerified": raw.get("isVerified", False),
+        "isInfluencer": raw.get("influencer", False),
+        "isCreator": raw.get("creator", False),
+        "email": None,
+        "mobileNumber": None,
+        "educations": raw.get("educations", []),
+        "skills": raw.get("skills", []),
+        "languages": raw.get("languages", []),
+        "certifications": raw.get("certifications", []),
+    }
+
+
 # =============================================================================
 # MODULE 3B: PROCESSED LEADS TRACKING (Duplicate Prevention)
 # =============================================================================
@@ -796,7 +894,7 @@ def scrape_linkedin_profiles(
     start_url = f"https://api.apify.com/v2/acts/{PROFILE_SCRAPER_ACTOR}/runs?token={APIFY_API_TOKEN}"
 
     payload = {
-        "profileUrls": urls_to_scrape
+        "urls": [{"url": u} for u in urls_to_scrape]
     }
 
     try:
@@ -842,7 +940,10 @@ def scrape_linkedin_profiles(
     try:
         response = requests.get(data_url, headers={"Accept": "application/json"})
         response.raise_for_status()
-        new_profiles = response.json()
+        raw_profiles = response.json()
+
+        # Normalize supreme_coder output to dev_fusion format
+        new_profiles = [normalize_supreme_coder_profile(r) for r in raw_profiles]
 
         print(f"Retrieved {len(new_profiles)} NEW profiles from Apify")
         cost_tracker.add_profile_scrape(len(new_profiles))
