@@ -144,3 +144,25 @@ You sit between human intent (directives) and deterministic execution (Python sc
 Be pragmatic. Be reliable. Self-anneal.
 
 Also, use Opus-4.5 for everything while building. It came out a few days ago and is an order of magnitude better than Sonnet and other models. If you can't find it, look it up first.
+
+## Cross-Repo Knowledge Sharing
+
+This project is part of a 3-repo system. Read `.claude/CROSS_REPO.md` for shared context (endpoints, data flows, conventions).
+
+### Proactive Propagation
+
+**After completing work, assess whether sibling repos need to know about it.** Propagate when you've created or changed:
+- Webhook endpoints or Modal functions (other repos may interact with them)
+- Outreach pipeline changes that affect prospect data in the shared DB
+- New directives or execution scripts that touch shared data
+- Message templates or personalization logic that contentCreator feeds into
+- Conventions or patterns that apply across repos
+
+### How to Propagate
+
+1. Update `C:\Users\IanShaw\localProgramming\smiths\CROSS_REPO.md` (canonical source)
+2. Copy to all repos: `cp ../CROSS_REPO.md .claude/CROSS_REPO.md` (and siblings)
+3. If a sibling's CLAUDE.md needs project-specific updates, edit it directly
+4. Commit and push in each affected repo
+
+Or run `/sync-siblings` to follow the full workflow.
