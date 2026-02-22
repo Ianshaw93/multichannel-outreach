@@ -7,3 +7,9 @@
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# browser skill
+.claude/skills/browser/node_modules/
+.claude/skills/browser/.pw-exec-*
+.claude/skills/browser/profiles/*/
+!.claude/skills/browser/profiles/.gitkeep
