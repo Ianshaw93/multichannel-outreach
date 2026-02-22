@@ -936,6 +936,7 @@ def run_gift_leads_pipeline(
     dry_run: bool = False,
     skip_research: bool = False,
     queries_file: Optional[str] = None,
+    force_scrape: bool = False,
 ) -> Dict[str, Any]:
     """
     Main orchestrator for the gift leads list pipeline.
@@ -951,6 +952,7 @@ def run_gift_leads_pipeline(
         max_leads: Maximum leads to return
         dry_run: If True, use cached data only, skip Apify calls
         skip_research: If True, skip research step (requires user_icp)
+        force_scrape: If True, skip DB check and always scrape fresh
 
     Returns:
         Pipeline results dict
@@ -1044,7 +1046,7 @@ def run_gift_leads_pipeline(
     print(f"  Buying signals: {research.get('buying_signals', [])}")
 
     # ── Step 2.5: Check DB for existing leads ──
-    if not dry_run:
+    if not dry_run and not force_scrape:
         print("\n[2.5/12] Checking DB for existing leads...")
         # Extract keywords from ICP description for DB search
         icp_keywords = [w.strip() for w in icp_description.split(",") if len(w.strip()) > 2]
@@ -1401,6 +1403,10 @@ def main():
         "--queries-file", default=None,
         help="Path to file with pre-formed search queries (one per line, skips query generation)"
     )
+    parser.add_argument(
+        "--force-scrape", action="store_true",
+        help="Skip DB check and always scrape fresh leads"
+    )
 
     args = parser.parse_args()
 
@@ -1420,6 +1426,7 @@ def main():
             dry_run=args.dry_run,
             skip_research=args.skip_research,
             queries_file=args.queries_file,
+            force_scrape=args.force_scrape,
         )
     except Exception as e:
         # Post failed run record

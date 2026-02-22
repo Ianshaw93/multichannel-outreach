@@ -55,7 +55,10 @@ You operate within a 3-layer architecture that separates concerns to maximize re
 **1. Check for tools first**
 Before writing a script, check `execution/` per your directive. Only create new scripts if none exist.
 
-**2. Self-anneal when things break**
+**2. Log costs for all paid actions**
+Any action that incurs a cost (API calls, Apify, LLM tokens, etc.) must be logged to the speed_to_lead database. See CROSS_REPO.md "Cost Tracking" section.
+
+**3. Self-anneal when things break**
 - Read error message and stack trace
 - Fix the script and test it again (unless it uses paid tokens/credits/etc—in which case you check w user first)
 - Update the directive with what you learned (API limits, timing, edge cases)
