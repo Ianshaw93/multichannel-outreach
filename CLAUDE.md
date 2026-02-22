@@ -1,171 +1,146 @@
-# Agent Instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Common Commands
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run a single test file
+python -m pytest tests/test_competitor_post_pipeline.py -v
+
+# Run execution scripts (always from repo root, scripts use relative imports)
+python execution/competitor_post_pipeline.py --keywords "ceos" --list_id 480247 --dry_run
+python execution/gift_leads_list.py --prospect-url "https://linkedin.com/in/johndoe" --dry-run
+python execution/buying_signal_outreach.py --csv .tmp/signals.csv --dry-run
+python execution/sync_prospects_to_db.py --file .tmp/leads.json --source competitor_post
+
+# Local API server
+uvicorn execution.api_server:app --host 0.0.0.0 --port 8000
+
+# Deploy webhooks
+modal deploy execution/modal_webhook.py
+
+# Install dependencies
+pip install -r requirements.txt
+```
 
 ## Related Projects
 
-This is part of a 3-project prospecting/outreach system:
+Part of a 3-project prospecting/outreach system:
 
 | Project | Path | Purpose |
 |---------|------|---------|
-| **speed_to_lead** | `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\speed_to_lead` | Prospecting & lead tracking |
-| **multichannel-outreach** | `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\multichannel-outreach` | Messaging & outreach automation |
-| **contentCreator** | `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\contentCreator` | Content generation |
+| **speed_to_lead** | `../speed_to_lead` | Prospecting & lead tracking (owns DB schema, Railway deployment) |
+| **multichannel-outreach** | (this repo) | Messaging & outreach automation |
+| **contentCreator** | `../contentCreator` | Content generation |
+
+Read `.claude/CROSS_REPO.md` for shared context (endpoints, data flows, conventions).
 
 ## Railway Deployment
 
-The shared API server is deployed under the **speed_to_lead** service on Railway:
-- **Project:** `smiths-li-backend`
-- **Service:** `speed_to_lead`
+The shared API server is deployed under **speed_to_lead** on Railway:
 - **URL:** `https://speedtolead-production.up.railway.app`
-- **Source repo:** `speed_to_lead` (not multichannel-outreach)
+- **Source repo:** `speed_to_lead` (NOT this repo)
 
-Any new API endpoints (webhooks, etc.) must be added to `speed_to_lead/execution/api_server.py` — that's the codebase Railway deploys.
+Any new API endpoints must be added to `speed_to_lead/execution/api_server.py`.
 
 > This file is mirrored across CLAUDE.md, AGENTS.md, and GEMINI.md so the same instructions load in any AI environment.
 
-You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.
+## Architecture: 3-Layer System
 
-## The 3-Layer Architecture
+LLMs are probabilistic; business logic is deterministic. This architecture fixes that mismatch.
 
-**Layer 1: Directive (What to do)**
-- Basically just SOPs written in Markdown, live in `directives/`
-- Define the goals, inputs, tools/scripts to use, outputs, and edge cases
-- Natural language instructions, like you'd give a mid-level employee
+**Layer 1: Directive** — SOPs in Markdown (`directives/`). Define goals, inputs, tools, outputs, edge cases.
 
-**Layer 2: Orchestration (Decision making)**
-- This is you. Your job: intelligent routing.
-- Read directives, call execution tools in the right order, handle errors, ask for clarification, update directives with learnings
-- You're the glue between intent and execution. E.g you don't try scraping websites yourself—you read `directives/scrape_website.md` and come up with inputs/outputs and then run `execution/scrape_single_site.py`
+**Layer 2: Orchestration** — You. Read directives, call execution scripts in order, handle errors, update directives with learnings. Don't do the work yourself—route to scripts.
 
-**Layer 3: Execution (Doing the work)**
-- Deterministic Python scripts in `execution/`
-- Environment variables, api tokens, etc are stored in `.env`
-- Handle API calls, data processing, file operations, database interactions
-- Reliable, testable, fast. Use scripts instead of manual work.
+**Layer 3: Execution** — Deterministic Python scripts (`execution/`). API calls, data processing, file ops, DB interactions.
 
-**Why this works:** if you do everything yourself, errors compound. 90% accuracy per step = 59% success over 5 steps. The solution is push complexity into deterministic code. That way you just focus on decision-making.
+**Why:** 90% accuracy per step = 59% success over 5 steps. Push complexity into deterministic code.
+
+## Key Execution Pipelines
+
+**Competitor Post Pipeline** (`execution/competitor_post_pipeline.py`): Google search → filter posts by reactions → scrape engagers (Apify) → scrape profiles → location filter → ICP qualify (DeepSeek) → personalize DMs → upload to HeyReach
+
+**Gift Leads List** (`execution/gift_leads_list.py`): Scrape prospect profile → research ICP (DeepSeek) → generate search queries → find posts → scrape engagers → ICP qualify → generate signal notes → export JSON/CSV
+
+**Buying Signal Outreach** (`execution/buying_signal_outreach.py`): Gojiberry CSV → scrape posts (Apify) → personalize 5-line DMs → output JSON
+
+**Personalize & Upload** (`execution/personalize_and_upload.py`): Vayne JSON → ICP check (DeepSeek) → personalize → validate → re-personalize failures → upload to HeyReach
+
+**Sync to DB** (`execution/sync_prospects_to_db.py`): Read prospect JSONs from `.tmp/` → POST to speed_to_lead API
+
+## External Services & APIs
+
+- **HeyReach** — LinkedIn outreach automation (API: `api.heyreach.io`)
+- **Apify** — Web scraping (profile scraper: `dev_fusion~Linkedin-Profile-Scraper`)
+- **DeepSeek** — LLM for ICP qualification and DM personalization
+- **Modal** — Serverless webhook hosting
+- **Google Sheets/Slides** — Deliverable outputs via `gspread` + OAuth
+- **Gojiberry** — Buying signal source (webhook into speed_to_lead)
 
 ## Deprecated Tools
 
-**Vayne.io (`scrape_linkedin_vayne.py`)** — No active subscription. Do NOT use in any workflows. Use Apify `dev_fusion~Linkedin-Profile-Scraper` for LinkedIn profile scraping instead.
+**Vayne.io (`scrape_linkedin_vayne.py`)** — No active subscription. Use Apify `dev_fusion~Linkedin-Profile-Scraper` instead.
 
 ## Operating Principles
 
-**0. Always be concise—sacrifice grammar for being concise**
+**0. Be concise**
 
-**1. Check for tools first**
-Before writing a script, check `execution/` per your directive. Only create new scripts if none exist.
+**1. Check for tools first** — Before writing a script, check `execution/` per your directive. Only create new scripts if none exist.
 
-**2. Log costs for all paid actions**
-Any action that incurs a cost (API calls, Apify, LLM tokens, etc.) must be logged to the speed_to_lead database. See CROSS_REPO.md "Cost Tracking" section.
+**2. Log costs for all paid actions** — API calls, Apify, LLM tokens, etc. must be logged to the speed_to_lead database. See CROSS_REPO.md "Cost Tracking".
 
-**3. Self-anneal when things break**
-- Read error message and stack trace
-- Fix the script and test it again (unless it uses paid tokens/credits/etc—in which case you check w user first)
-- Update the directive with what you learned (API limits, timing, edge cases)
-- Example: you hit an API rate limit → you then look into API → find a batch endpoint that would fix → rewrite script to accommodate → test → update directive.
+**3. Self-anneal when things break** — Read error → fix script → test → update directive with learnings (API limits, timing, edge cases). Don't retry paid actions without user confirmation.
 
-**3. Update directives as you learn**
-Directives are living documents. When you discover API constraints, better approaches, common errors, or timing expectations—update the directive. But don't create or overwrite directives without asking unless explicitly told to. Directives are your instruction set and must be preserved (and improved upon over time, not extemporaneously used and then discarded).
+**4. Update directives as you learn** — Directives are living documents. Don't create/overwrite without asking. Improve over time.
 
-**4. Never modify prompts without explicit permission**
-`execution/prompts.py` is the single source of truth for all AI prompts used across the pipeline. Do NOT modify, rewrite, or "improve" prompts in this file without clear user permission. All scripts that generate personalized messages must import from `prompts.py`—never inline duplicate prompts. If you think a prompt needs improvement, ask first.
+**5. Never modify prompts without explicit permission** — `execution/prompts.py` is the single source of truth. All personalization scripts import from it. Never inline duplicate prompts.
 
-## Self-annealing loop
-
-Errors are learning opportunities. When something breaks:
-1. Fix it
-2. Update the tool
-3. Test tool, make sure it works
-4. Update directive to include new flow
-5. System is now stronger
+**6. Assess health check needs after building** — After completing any feature that creates a new data flow (webhook, pipeline, scheduled task, external integration), assess whether the health check system needs a new check. If the feature has a "liveness signal" (data that should appear regularly if working), add a check. See `directives/health_check_system.md`.
 
 ## File Organization
 
-**Deliverables vs Intermediates:**
-- **Deliverables**: Google Sheets, Google Slides, or other cloud-based outputs that the user can access
-- **Intermediates**: Temporary files needed during processing
+- `.tmp/` — Intermediate files (dossiers, scraped data, temp exports). Never commit, always regenerated.
+- `execution/` — Python scripts (deterministic tools). Scripts run from repo root.
+- `directives/` — SOPs in Markdown (instruction set)
+- `execution/prompts.py` — All AI prompt templates (DO NOT modify without permission)
+- `.env` — Environment variables and API keys
+- `credentials.json`, `token.json` — Google OAuth credentials (in `.gitignore`)
 
-**Directory structure:**
-- `.tmp/` - All intermediate files (dossiers, scraped data, temp exports). Never commit, always regenerated.
-- `execution/` - Python scripts (the deterministic tools)
-- `directives/` - SOPs in Markdown (the instruction set)
-- `.env` - Environment variables and API keys
-- `credentials.json`, `token.json` - Google OAuth credentials (required files, in `.gitignore`)
+**Key principle:** Local files are only for processing. Deliverables live in cloud services (Google Sheets, Slides, etc.). Everything in `.tmp/` can be deleted and regenerated.
 
-**Key principle:** Local files are only for processing. Deliverables live in cloud services (Google Sheets, Slides, etc.) where the user can access them. Everything in `.tmp/` can be deleted and regenerated.
+## Script Import Pattern
+
+Execution scripts use `sys.path.insert` and import sibling modules directly. When running from repo root, use `python execution/script.py`. Scripts import prompts via `from prompts import ...` (relative to `execution/` on `sys.path`).
 
 ## Cloud Webhooks (Modal)
 
-The system supports event-driven execution via Modal webhooks. Each webhook maps to exactly one directive with scoped tool access.
+Each webhook maps to one directive with scoped tool access.
 
-**When user says "add a webhook that...":**
-1. Read `directives/add_webhook.md` for complete instructions
-2. Create the directive file in `directives/`
+**Adding a webhook:**
+1. Read `directives/add_webhook.md`
+2. Create directive file in `directives/`
 3. Add entry to `execution/webhooks.json`
 4. Deploy: `modal deploy execution/modal_webhook.py`
 5. Test the endpoint
 
-**Key files:**
-- `execution/webhooks.json` - Webhook slug → directive mapping
-- `execution/modal_webhook.py` - Modal app (do not modify unless necessary)
-- `directives/add_webhook.md` - Complete setup guide
-
 **Endpoints:**
-- `https://nick-90891--claude-orchestrator-list-webhooks.modal.run` - List webhooks
-- `https://nick-90891--claude-orchestrator-directive.modal.run?slug={slug}` - Execute directive
-- `https://nick-90891--claude-orchestrator-test-email.modal.run` - Test email
+- `https://nick-90891--claude-orchestrator-list-webhooks.modal.run` — List webhooks
+- `https://nick-90891--claude-orchestrator-directive.modal.run?slug={slug}` — Execute directive
+- `https://nick-90891--claude-orchestrator-test-email.modal.run` — Test email
 
-**Available tools for webhooks:** `send_email`, `read_sheet`, `update_sheet`
+**Available tools:** `send_email`, `read_sheet`, `update_sheet`. All activity streams to Slack.
 
-**All webhook activity streams to Slack in real-time.**
+## Cross-Repo Propagation
 
-## Claude Code Configuration (Skip Permissions)
+After completing work, assess whether sibling repos need updates. Propagate when you change:
+- Webhook endpoints or Modal functions
+- Outreach pipeline changes affecting shared DB
+- Message templates or personalization logic
+- Conventions that apply across repos
 
-To avoid permission prompts on every tool call, configure Claude Code to auto-approve:
-
-**Create / edit the config file:**
-```bash
-mkdir -p ~/.config/claude
-nano ~/.config/claude/claude.json
-```
-
-**Add this configuration:**
-```json
-{
-  "permissions": {
-    "default": "allow"
-  }
-}
-```
-
-That's it. Claude Code will now execute without prompting for permissions.
-
-## Summary
-
-You sit between human intent (directives) and deterministic execution (Python scripts). Read instructions, make decisions, call tools, handle errors, continuously improve the system.
-
-Be pragmatic. Be reliable. Self-anneal.
-
-Also, use Opus-4.5 for everything while building. It came out a few days ago and is an order of magnitude better than Sonnet and other models. If you can't find it, look it up first.
-
-## Cross-Repo Knowledge Sharing
-
-This project is part of a 3-repo system. Read `.claude/CROSS_REPO.md` for shared context (endpoints, data flows, conventions).
-
-### Proactive Propagation
-
-**After completing work, assess whether sibling repos need to know about it.** Propagate when you've created or changed:
-- Webhook endpoints or Modal functions (other repos may interact with them)
-- Outreach pipeline changes that affect prospect data in the shared DB
-- New directives or execution scripts that touch shared data
-- Message templates or personalization logic that contentCreator feeds into
-- Conventions or patterns that apply across repos
-
-### How to Propagate
-
-1. Update `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\CROSS_REPO.md` (canonical source)
-2. Copy to all repos: `cp ../CROSS_REPO.md .claude/CROSS_REPO.md` (and siblings)
-3. If a sibling's CLAUDE.md needs project-specific updates, edit it directly
-4. Commit and push in each affected repo
-
-Or run `/sync-siblings` to follow the full workflow.
+Run `/sync-siblings` to propagate, or manually update `../CROSS_REPO.md` and copy to `.claude/CROSS_REPO.md` in each repo.
