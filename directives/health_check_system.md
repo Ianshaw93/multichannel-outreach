@@ -2,7 +2,7 @@
 
 ## Overview
 
-Production health checks run 2x/day (10am, 3pm UK) via APScheduler in the speed_to_lead service. They query the DB for liveness signals and only alert Slack when something looks wrong.
+Production health checks run 2x/day (10:00, 15:00 UK) via APScheduler in the speed_to_lead service (registered in `app/main.py` lifespan; restored 2026-07-12 after being silently unscheduled since March). They query the DB for liveness signals and only alert Slack when something looks wrong. Manual trigger: `POST /admin/health-check` or `GET /admin/health-check/status`.
 
 - **Code:** `speed_to_lead/app/services/health_check.py`
 - **Tests:** `speed_to_lead/tests/test_health_check.py`

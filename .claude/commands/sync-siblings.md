@@ -1,59 +1,26 @@
 # Cross-Repo Sync
 
-You are syncing cross-cutting knowledge across the 3 smiths projects. This command can be triggered explicitly or should be run proactively when you've created something that sibling repos should know about.
+You are syncing cross-cutting knowledge across the 3 smiths sub-repos. Run this after creating anything sibling repos should know about (new endpoint, schema change, data flow, convention, scheduled job, decision).
 
-## The 3 Projects
+All repos live under the umbrella: `C:\Users\IanShaw\Documents\localProgramming\smiths\LI_cross_repo\` (sub-repos: `speed_to_lead/`, `multichannel-outreach/`, `contentCreator/`).
 
-| Project | Path | Purpose |
-|---------|------|---------|
-| **speed_to_lead** | `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\speed_to_lead` | Prospecting & lead tracking |
-| **multichannel-outreach** | `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\multichannel-outreach` | Messaging & outreach automation |
-| **contentCreator** | `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\contentCreator` | Content generation |
+## Files
 
-## Shared Files
-
-- **Canonical source**: `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\CROSS_REPO.md`
-- **In-repo copies**: Each repo has `.claude/CROSS_REPO.md` (committed to git, for web app access)
+- **Canonical knowledge**: `LI_cross_repo/CROSS_REPO.md` (umbrella root). This is the ONLY file you edit.
+- **Decision log**: `LI_cross_repo/DECISIONS.md` — dated entries for anything decided/shelved/retired.
+- **In-repo copies**: `.claude/CROSS_REPO.md` in each sub-repo are AUTO-GENERATED (for standalone/web access). Never edit them.
 
 ## Workflow
 
-### Step 1: Identify what changed
-Look at recent work in the current repo. Identify anything cross-cutting:
-- New API endpoints that other repos might call
-- Database schema changes (new models, fields, enums)
-- New metrics or reporting capabilities
-- Shared conventions or patterns discovered
-- Data flow changes between projects
-- New skills/commands that would benefit other repos
-- Infrastructure changes (deployment, env vars, etc.)
-
-### Step 2: Update the shared knowledge file
-Update `C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\CROSS_REPO.md` with any new cross-cutting info.
-
-### Step 3: Sync CROSS_REPO.md copies to all repos
-Copy the canonical `CROSS_REPO.md` to each repo's `.claude/CROSS_REPO.md`:
-```bash
-cp "C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\CROSS_REPO.md" "C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\speed_to_lead\.claude\CROSS_REPO.md"
-cp "C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\CROSS_REPO.md" "C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\multichannel-outreach\.claude\CROSS_REPO.md"
-cp "C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\CROSS_REPO.md" "C:\Users\IanShaw\localProgramming\smiths\LI_cross_repo\contentCreator\.claude\CROSS_REPO.md"
-```
-
-### Step 4: Update sibling CLAUDE.md files if needed
-If specific project-level knowledge needs to go into a sibling's CLAUDE.md (not just the shared file), update it directly. Examples:
-- A new endpoint in speed_to_lead that multichannel-outreach needs to call
-- A new content type in contentCreator that speed_to_lead should track
-
-### Step 5: Commit and push to all affected repos
-For each repo that changed:
-```bash
-cd <repo_path>
-git add .claude/CROSS_REPO.md CLAUDE.md
-git commit -m "Sync cross-repo knowledge from <source_repo>"
-git push
-```
+1. **Identify what changed** in the current repo that is cross-cutting: endpoints, schema, metrics, conventions, data flows, scheduled jobs, infrastructure.
+2. **Edit the canonical file**: `../CROSS_REPO.md` (umbrella root). Keep the structure: Hard Rules → routing table → verified facts. If a decision was made, add a dated entry to `../DECISIONS.md` instead of burying it in prose.
+3. **Regenerate copies** from the umbrella root:
+   ```bash
+   cd .. && bash sync_cross_repo.sh
+   ```
+4. **Update sibling CLAUDE.md files** only for project-specific knowledge that belongs there (e.g. a new endpoint a specific sibling must call).
+5. **Commit**: the umbrella repo (CROSS_REPO.md, DECISIONS.md) and each sub-repo whose `.claude/CROSS_REPO.md` changed. **Do not push sub-repos without checking with Ian if unrelated uncommitted work exists** — a push to speed_to_lead triggers a production deploy.
 
 ## What NOT to sync
-- Project-specific implementation details (internal functions, local test setup)
-- Temporary/experimental features
-- Credentials or secrets
-- Work-in-progress that isn't ready
+
+- Project-internal implementation details, temp/experimental features, credentials, WIP.
