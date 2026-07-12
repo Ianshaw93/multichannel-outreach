@@ -120,7 +120,7 @@ Timestamps on `Prospect`: `connection_sent_at`, `connection_accepted_at`, `posit
 ## Unipile LinkedIn Pipeline (operational facts)
 
 - **Burst sender** (`app/services/unipile_sender.py`): targets prospects with `source_keyword = 'safety engineering'` AND `connection_sent_at IS NULL`. Caps via Railway env `UNIPILE_MAX_PER_DAY` / `UNIPILE_MAX_PER_WEEK` (10/50 since 2026-07-04 ramp; see DECISIONS.md).
-- **Refill gotcha**: `scripts/load_ehs_firms.py` tags prospects `ehs_firm_research_2026_03`, which the sender does NOT pick up. They must be retagged to `source_keyword = 'safety engineering'` via SQL. Loading ≠ queued. Full procedure: `playbooks/refill-sender-queue.md`.
+- **Refill**: `scripts/load_ehs_firms.py` tags prospects `safety engineering` by default since 2026-07-12 — loading IS queueing (`--source-keyword` stages a batch unsent instead). Procedure + verification: `playbooks/refill-sender-queue.md`. Batches loaded under other tags still need a retag.
 - **Acceptance sweep** is the ONLY acceptance detection for Unipile-sent invites. Also pulls contact email into `Prospect.email` (1st-degree only).
 - **Comment poll** Unipile quirk: share-URL ids (`urn:li:share:X`) resolve to a post whose real `social_id` is a different `urn:li:activity:` — always query comments against the resolved `social_id`.
 - **Voice notes**: poll/transcribe side works (`app/services/voice_note_poll.py`, `voice_notes` table). The interactive SEND CLI is lost (pre-`Documents` path move, never committed). Sending is manual via the LinkedIn app until rebuilt.
