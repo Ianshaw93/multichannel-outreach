@@ -1,4 +1,4 @@
-> **AUTO-GENERATED COPY — do not edit.** Canonical file: `LI_cross_repo/CROSS_REPO.md` (umbrella repo root). Regenerate with `../sync_cross_repo.sh`. Synced: 2026-07-12.
+> **AUTO-GENERATED COPY — do not edit.** Canonical file: `LI_cross_repo/CROSS_REPO.md` (umbrella repo root). Regenerate with `../sync_cross_repo.sh`. Synced: 2026-07-19.
 
 ---
 # Smiths Cross-Repo Knowledge
@@ -35,6 +35,7 @@ Playbooks live in the umbrella repo only (`LI_cross_repo/playbooks/`) — they i
 | Add a health check | `playbooks/add-health-check.md` |
 | Deploy speed_to_lead and verify it | `playbooks/deploy-and-verify.md` |
 | Location / firm-phone enrichment | `playbooks/run-location-enrichment.md` |
+| Comment engagement state (tracked comments, replies waiting) | `playbooks/query-funnel-state.md` §comment engagement |
 | What runs on a schedule | "Scheduled Jobs" table below |
 | Why something was decided / shelved / retired | `DECISIONS.md` |
 | Outreach pipeline scripts + SOPs | `multichannel-outreach/execution/` + `multichannel-outreach/directives/` |
@@ -69,7 +70,8 @@ All scheduling lives in speed_to_lead's APScheduler, registered in `app/main.py`
 | Safety engineering briefing → Obsidian | daily 7:00 | `app/services/safety_briefing.py` |
 | Unipile acceptance sweep (stamps `connection_accepted_at`, pulls emails) | daily 7:45 | `app/services/acceptance_sweep.py` |
 | Accepted-connections Slack digest | daily 8:00 | `app/services/scheduler.py` |
-| Comment engagement poll (own comments → prospect match → Slack) | every 2 days 8:30 | `app/services/comment_engagement_poll.py` |
+| Comment engagement poll (own comments → prospect match → Slack; also flags who replied/reacted to reported comments via `comment_reply_state` / `comment_reaction_state` tables) | every 2 days 8:30 | `app/services/comment_engagement_poll.py` |
+| Funnel comment digest (prospect posts → one Slack card each, ✅ Commented / Skip / ⛔ Not ICP buttons) | daily 8:35 | `app/services/funnel_comment_digest.py` |
 | Voice note poll (Unipile → Whisper → DB → Slack) | daily 9:17 | `app/services/voice_note_poll.py` |
 | Unipile connection burst (probabilistic fire) | every 30 min, 9–18 | `app/services/unipile_sender.py` |
 | Unipile Sunday catch-up to weekly cap | Sun 11:00 | `app/services/unipile_sender.py` |
@@ -93,6 +95,7 @@ Timestamps on `Prospect`: `connection_sent_at`, `connection_accepted_at`, `posit
 - `POST /admin/run-migrations` — Run DB migrations (needs `Authorization: Bearer SECRET_KEY`)
 - `POST /admin/health-check` (auth) / `GET /admin/health-check/status` (no auth)
 - `GET /admin/poll-comment-engagement` — Manual comment-poll trigger
+- `POST /api/engagement/funnel-digest` — Manual funnel-comment-digest trigger (no auth)
 - `GET /health` — Liveness check
 
 ### Webhooks
@@ -123,6 +126,8 @@ Timestamps on `Prospect`: `connection_sent_at`, `connection_accepted_at`, `posit
 - **Refill**: `scripts/load_ehs_firms.py` tags prospects `safety engineering` by default since 2026-07-12 — loading IS queueing (`--source-keyword` stages a batch unsent instead). Procedure + verification: `playbooks/refill-sender-queue.md`. Batches loaded under other tags still need a retag.
 - **Acceptance sweep** is the ONLY acceptance detection for Unipile-sent invites. Also pulls contact email into `Prospect.email` (1st-degree only).
 - **Comment poll** Unipile quirk: share-URL ids (`urn:li:share:X`) resolve to a post whose real `social_id` is a different `urn:li:activity:` — always query comments against the resolved `social_id`.
+- **Comment drafting** (`app/prompts/comment_drafter.py`): draws on the true-anecdote bank in `app/prompts/comment_anecdotes.py` (topic-keyword matched, max 2 offered, max 1 used) plus real good/bad voice few-shots. Canonical anecdote source: Obsidian `Smiths/Safety Engineering niche/LinkedIn Comment Workflow - Learnings & Anecdote Library`. Keep the two in sync when adding anecdotes.
+- **Funnel comment digest** (`app/services/funnel_comment_digest.py`, daily 8:35 UK + manual trigger): funnel targets (accepted > invite-pending > queued, `icp_match IS NOT FALSE`) → Unipile posts → one short Slack card per person (avatar, bio line, post teaser, "View posts" → activity feed). No drafting. Buttons: ✅ Commented / Skip / **⛔ Not ICP** — Not ICP stamps `icp_match=false` (removes the person from the digest AND the connection sender), deactivates the watched profile. Dedup store = unique `engagement_posts.post_url`; a person resurfaces when they post something new.
 - **Voice notes**: poll/transcribe side works (`app/services/voice_note_poll.py`, `voice_notes` table). The interactive SEND CLI is lost (pre-`Documents` path move, never committed). Sending is manual via the LinkedIn app until rebuilt.
 - **Location + firm-phone enrichment**: `scripts/enrich_locations.py`, standalone, throttled with per-run caps — see `playbooks/run-location-enrichment.md`.
 
