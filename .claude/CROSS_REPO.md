@@ -70,7 +70,7 @@ All scheduling lives in speed_to_lead's APScheduler, registered in `app/main.py`
 | Safety engineering briefing → Obsidian | daily 7:00 | `app/services/safety_briefing.py` |
 | Unipile acceptance sweep (stamps `connection_accepted_at`, pulls emails) | daily 7:45 | `app/services/acceptance_sweep.py` |
 | Accepted-connections Slack digest | daily 8:00 | `app/services/scheduler.py` |
-| Comment engagement poll (own comments → prospect match → Slack; also flags who replied/reacted to reported comments via `comment_reply_state` / `comment_reaction_state` tables) | every 2 days 8:30 | `app/services/comment_engagement_poll.py` |
+| Comment engagement poll (own comments → prospect match → Slack; also flags who replied/reacted to reported comments via `comment_reply_state` / `comment_reaction_state` tables — incl. engagement that landed before first sighting) | daily 8:30 | `app/services/comment_engagement_poll.py` |
 | Funnel comment digest (prospect posts → one Slack card each, ✅ Commented / Skip / ⛔ Not ICP buttons) | daily 8:35 | `app/services/funnel_comment_digest.py` |
 | Voice note poll (Unipile → Whisper → DB → Slack) | daily 9:17 | `app/services/voice_note_poll.py` |
 | Unipile connection burst (probabilistic fire) | every 30 min, 9–18 | `app/services/unipile_sender.py` |
